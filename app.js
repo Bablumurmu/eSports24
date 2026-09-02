@@ -89,6 +89,7 @@ function openModal(html) {
   modal.innerHTML = `
     <div class="modal-backdrop">
       <div class="modal-box">
+
         <button
           class="modal-close"
           onclick="closeModal()"
@@ -260,7 +261,7 @@ function getFirstPrize(tournament) {
 
 
 /* =========================
-   MODAL / DRAWER
+   MODAL BACKDROP
 ========================= */
 
 document.addEventListener("click", event => {
@@ -343,6 +344,7 @@ function openLogin() {
 
     <p style="margin-top:15px;">
       Don't have an account?
+
       <button
         id="openSignup"
         class="linkbtn"
@@ -414,8 +416,7 @@ function openLogin() {
     };
 
 
-  $("openSignup").onclick =
-    openSignup;
+  $("openSignup").onclick = openSignup;
 
 }
 
@@ -579,6 +580,7 @@ async function saveProfile() {
         currentUser.uid
       );
 
+
     const existing =
       await getDoc(userRef);
 
@@ -590,7 +592,8 @@ async function saveProfile() {
         {
           name,
           mobile,
-          email: currentUser.email || ""
+          email:
+            currentUser.email || ""
         },
         {
           merge: true
@@ -602,13 +605,22 @@ async function saveProfile() {
       await setDoc(
         userRef,
         {
-          uid: currentUser.uid,
+          uid:
+            currentUser.uid,
+
           name,
+
           mobile,
-          email: currentUser.email || "",
+
+          email:
+            currentUser.email || "",
+
           walletBalance: 0,
+
           role: "user",
-          createdAt: serverTimestamp()
+
+          createdAt:
+            serverTimestamp()
         }
       );
 
@@ -663,6 +675,7 @@ onAuthStateChanged(
             currentUser.uid
           );
 
+
         const snap =
           await getDoc(userRef);
 
@@ -672,16 +685,23 @@ onAuthStateChanged(
           await setDoc(
             userRef,
             {
-              uid: currentUser.uid,
+              uid:
+                currentUser.uid,
+
               name:
                 currentUser.displayName ||
                 "",
+
               email:
                 currentUser.email ||
                 "",
+
               walletBalance: 0,
+
               role: "user",
-              createdAt: serverTimestamp()
+
+              createdAt:
+                serverTimestamp()
             }
           );
 
@@ -704,6 +724,7 @@ onAuthStateChanged(
       if (myTournamentUnsubscribe) {
 
         myTournamentUnsubscribe();
+
         myTournamentUnsubscribe = null;
 
       }
@@ -737,6 +758,7 @@ function loadTournaments() {
   tournamentUnsubscribe =
     onSnapshot(
       collection(db, "tournaments"),
+
       snapshot => {
 
         tournaments =
@@ -751,11 +773,13 @@ function loadTournaments() {
         tournaments.sort(
           (a, b) =>
             timestampMs(
+              a.matchDateTime ||
               a.matchDate ||
               a.date ||
               a.createdAt
             ) -
             timestampMs(
+              b.matchDateTime ||
               b.matchDate ||
               b.date ||
               b.createdAt
@@ -768,6 +792,7 @@ function loadTournaments() {
         route();
 
       },
+
       error => {
 
         console.error(
@@ -828,10 +853,13 @@ async function loadPublicSettings() {
           ".site-logo"
         );
 
+
       logos.forEach(
         logo => {
+
           logo.src =
             publicSettings.logoUrl;
+
         }
       );
 
@@ -847,6 +875,7 @@ async function loadPublicSettings() {
 
       const splash =
         $("splashImage");
+
 
       if (splash) {
 
@@ -890,6 +919,7 @@ async function joinedIds() {
           db,
           "tournamentParticipants"
         ),
+
         where(
           "uid",
           "==",
@@ -976,21 +1006,33 @@ async function renderHome() {
   appEl.innerHTML = `
 
     <div class="section-title">
-      <h1>BGMI Tournaments</h1>
-      <p>Join and win exciting prizes.</p>
+
+      <h1>
+        BGMI Tournaments
+      </h1>
+
+      <p>
+        Join and win exciting prizes.
+      </p>
+
     </div>
+
 
     <div class="tournament-grid">
 
-      ${active
-        .map(
-          tournament =>
-            card(
-              tournament,
-              joined.has(tournament.id)
-            )
-        )
-        .join("")}
+      ${
+        active
+          .map(
+            tournament =>
+              card(
+                tournament,
+                joined.has(
+                  tournament.id
+                )
+              )
+          )
+          .join("")
+      }
 
     </div>
 
@@ -1032,15 +1074,16 @@ function card(
 
 
   const matchDate =
+    tournament.matchDateTime ||
     tournament.matchDate ||
     tournament.date;
 
 
   const perKill =
     Number(
-      tournament.perKill ||
-      tournament.perKillPrize ||
-      tournament.killPrize ||
+      tournament.perKill ??
+      tournament.perKillPrize ??
+      tournament.killPrize ??
       0
     );
 
@@ -1074,31 +1117,38 @@ function card(
           : ""
       }
 
+
       <div class="tournament-content">
 
         <h3>
           ${esc(tournament.name)}
         </h3>
 
+
         <div class="prize">
           🏆 ₹${esc(firstPrize)}
         </div>
+
 
         <div class="meta">
           🎮 ${esc(mode)}
         </div>
 
+
         <div class="meta">
           👥 ${joinedCount}/${slots}
         </div>
+
 
         <div class="meta">
           📅 ${esc(fmt(matchDate))}
         </div>
 
+
         <div class="meta">
           🎯 Kill ₹${esc(perKill)}
         </div>
+
 
         <div class="entry">
 
@@ -1113,6 +1163,7 @@ function card(
           }
 
         </div>
+
 
         ${
           joined
@@ -1154,7 +1205,8 @@ window.showDetails =
 
     const tournament =
       tournaments.find(
-        item => item.id === id
+        item =>
+          item.id === id
       );
 
 
@@ -1201,9 +1253,9 @@ function details(tournament) {
 
   const perKill =
     Number(
-      tournament.perKill ||
-      tournament.perKillPrize ||
-      tournament.killPrize ||
+      tournament.perKill ??
+      tournament.perKillPrize ??
+      tournament.killPrize ??
       0
     );
 
@@ -1214,11 +1266,18 @@ function details(tournament) {
     );
 
 
+  const matchDate =
+    tournament.matchDateTime ||
+    tournament.matchDate ||
+    tournament.date;
+
+
   openModal(`
 
     <h2>
       ${esc(tournament.name)}
     </h2>
+
 
     <div class="details-list">
 
@@ -1229,26 +1288,31 @@ function details(tournament) {
         </strong>
       </p>
 
+
       <p>
         💰 Total Prize:
         <strong>
           ₹${esc(
             tournament.totalPrize ||
+            tournament.prizeTotal ||
             tournament.prizePool ||
             0
           )}
         </strong>
       </p>
 
+
       <p>
         🎮 Mode:
         ${esc(mode)}
       </p>
 
+
       <p>
         👥 Slots:
         ${joinedCount}/${slots}
       </p>
+
 
       <p>
         📅 Registration End:
@@ -1260,15 +1324,14 @@ function details(tournament) {
         )}
       </p>
 
+
       <p>
         🕐 Match Date:
         ${esc(
-          fmt(
-            tournament.matchDate ||
-            tournament.date
-          )
+          fmt(matchDate)
         )}
       </p>
+
 
       <p>
         💵 Entry Fee:
@@ -1278,6 +1341,7 @@ function details(tournament) {
             : "₹" + entryFee
         }
       </p>
+
 
       <p>
         🎯 Per Kill:
@@ -1357,7 +1421,9 @@ function prizeRows(tournament) {
 
 
         return `
+
           <div class="prize-row">
+
             <span>
               ${index + 1}
             </span>
@@ -1365,7 +1431,9 @@ function prizeRows(tournament) {
             <strong>
               ₹${esc(amount)}
             </strong>
+
           </div>
+
         `;
 
       }
@@ -1397,6 +1465,7 @@ function startMyTournamentListener() {
         db,
         "tournamentParticipants"
       ),
+
       where(
         "uid",
         "==",
@@ -1408,6 +1477,7 @@ function startMyTournamentListener() {
   myTournamentUnsubscribe =
     onSnapshot(
       q,
+
       snapshot => {
 
         window.myTournamentDocs =
@@ -1429,6 +1499,7 @@ function startMyTournamentListener() {
         }
 
       },
+
       error => {
 
         console.error(
@@ -1463,6 +1534,7 @@ async function loadMyTournaments() {
           db,
           "tournamentParticipants"
         ),
+
         where(
           "uid",
           "==",
@@ -1567,7 +1639,8 @@ async function renderMyTournaments() {
 
       if (roomSnap.exists()) {
 
-        room = roomSnap.data();
+        room =
+          roomSnap.data();
 
       }
 
@@ -1591,6 +1664,7 @@ async function renderMyTournaments() {
             ${esc(tournament.name)}
           </h3>
 
+
           <p>
             👤 Character:
             ${esc(
@@ -1598,12 +1672,14 @@ async function renderMyTournaments() {
             )}
           </p>
 
+
           <p>
             🆔 BGMI ID:
             ${esc(
               participant.bgmiId
             )}
           </p>
+
 
           ${
             room
@@ -1614,16 +1690,20 @@ async function renderMyTournaments() {
                     🎮 Room ID:
                     <strong>
                       ${esc(
-                        room.roomId || "—"
+                        room.roomId ||
+                        "—"
                       )}
                     </strong>
                   </p>
+
 
                   <p>
                     🔑 Password:
                     <strong>
                       ${esc(
-                        room.password || "—"
+                        room.roomPassword ||
+                        room.password ||
+                        "—"
                       )}
                     </strong>
                   </p>
@@ -1657,6 +1737,7 @@ async function renderMyTournaments() {
       </h1>
 
     </div>
+
 
     <div class="tournament-grid">
 
@@ -1731,6 +1812,7 @@ async function renderProfile() {
 
     <h2>My Profile</h2>
 
+
     <div class="wallet-box">
 
       <div>
@@ -1759,6 +1841,7 @@ async function renderProfile() {
         placeholder="Name"
       >
 
+
       <input
         id="profileMobile"
         value="${esc(
@@ -1766,6 +1849,7 @@ async function renderProfile() {
         )}"
         placeholder="Mobile number"
       >
+
 
       <button
         class="btn primary"
@@ -1829,53 +1913,151 @@ async function renderProfile() {
 
 /* =========================
    ADD MONEY
+   MANUAL PAYMENT
 ========================= */
 
 window.addMoney =
   async function () {
 
-    if (!currentUser) {
+    /* ---------- LOGIN CHECK ---------- */
+
+    if (!auth.currentUser) {
 
       toast("Please login first.");
+
+      openLogin();
 
       return;
 
     }
 
 
+    /* ---------- REFRESH USER ---------- */
+
+    try {
+
+      await auth.currentUser.reload();
+
+      currentUser =
+        auth.currentUser;
+
+    } catch (error) {
+
+      console.error(
+        "Auth refresh error:",
+        error
+      );
+
+    }
+
+
+    if (!currentUser) {
+
+      toast(
+        "Login session expired. Please login again."
+      );
+
+      openLogin();
+
+      return;
+
+    }
+
+
+    /* ---------- QR ---------- */
+
+    let qrHtml = `
+
+      <div
+        style="
+          margin:15px 0;
+          padding:12px;
+          text-align:center;
+          background:#f5f5f5;
+          border-radius:12px;
+        "
+      >
+
+        <p style="margin:0;">
+          Payment QR not configured.
+        </p>
+
+      </div>
+
+    `;
+
+
+    if (
+      publicSettings.qrUrl &&
+      isHttpUrl(
+        publicSettings.qrUrl
+      )
+    ) {
+
+      qrHtml = `
+
+        <div
+          style="
+            text-align:center;
+            margin:15px 0;
+          "
+        >
+
+          <img
+            src="${esc(
+              publicSettings.qrUrl
+            )}"
+            alt="Payment QR"
+            style="
+              display:block;
+              max-width:220px;
+              width:100%;
+              height:auto;
+              margin:0 auto;
+              border-radius:10px;
+              background:#fff;
+            "
+            onerror="
+              this.style.display='none';
+              this.nextElementSibling.style.display='block';
+            "
+          >
+
+          <div
+            style="
+              display:none;
+              padding:15px;
+              background:#fff3cd;
+              border-radius:10px;
+              margin-top:10px;
+            "
+          >
+            Payment QR image could not be loaded.
+          </div>
+
+        </div>
+
+      `;
+
+    }
+
+
+    /* ---------- MODAL ---------- */
+
     openModal(`
 
-      <h2>Add Money</h2>
+      <h2>
+        Add Money
+      </h2>
+
 
       <p>
-        Submit your payment details
-        for admin verification.
+        Pay using the QR code and submit
+        your UTR / Transaction ID.
       </p>
 
-      ${
-        publicSettings.qrUrl &&
-        isHttpUrl(
-          publicSettings.qrUrl
-        )
-          ? `
-            <div style="text-align:center;margin:15px 0;">
 
-              <img
-                src="${esc(
-                  publicSettings.qrUrl
-                )}"
-                alt="Payment QR"
-                style="
-                  max-width:220px;
-                  width:100%;
-                  border-radius:10px;
-                "
-              >
-
-            </div>
-          `
-          : ""
-      }
+      ${qrHtml}
 
 
       <form
@@ -1888,21 +2070,32 @@ window.addMoney =
           type="number"
           min="1"
           max="50000"
+          step="1"
+          inputmode="numeric"
           placeholder="Amount ₹"
           required
         >
 
+
         <input
           id="depositUtr"
+          type="text"
+          minlength="4"
+          maxlength="100"
+          autocomplete="off"
           placeholder="UTR / Transaction ID"
           required
         >
 
+
         <input
           id="depositMobile"
+          type="tel"
+          maxlength="20"
           placeholder="Mobile number"
           required
         >
+
 
         <input
           id="depositEmail"
@@ -1914,7 +2107,9 @@ window.addMoney =
           required
         >
 
+
         <button
+          id="depositSubmitBtn"
           type="submit"
           class="btn primary"
         >
@@ -1926,47 +2121,95 @@ window.addMoney =
     `);
 
 
-    $("depositForm").onsubmit =
-      async event => {
+    const form =
+      $("depositForm");
+
+
+    const submitBtn =
+      $("depositSubmitBtn");
+
+
+    if (!form) {
+
+      toast(
+        "Deposit form could not be loaded."
+      );
+
+      return;
+
+    }
+
+
+    /* ---------- FORM SUBMIT ---------- */
+
+    form.onsubmit =
+      async function (event) {
 
         event.preventDefault();
 
 
+        if (
+          submitBtn &&
+          submitBtn.disabled
+        ) {
+
+          return;
+
+        }
+
+
         try {
 
-          const amount =
-            Number(
-              $("depositAmount")
-                .value
+          const user =
+            auth.currentUser;
+
+
+          if (!user) {
+
+            throw new Error(
+              "Login session expired. Please login again."
             );
+
+          }
+
+
+          const amountRaw =
+            $("depositAmount")
+              ?.value
+              ?.trim() || "";
 
 
           const utr =
             $("depositUtr")
-              .value
-              .trim();
+              ?.value
+              ?.trim() || "";
 
 
           const mobile =
             $("depositMobile")
-              .value
-              .trim();
+              ?.value
+              ?.trim() || "";
 
 
           const email =
             $("depositEmail")
-              .value
-              .trim();
+              ?.value
+              ?.trim() || "";
+
+
+          const amount =
+            Number(amountRaw);
 
 
           if (
             !Number.isFinite(amount) ||
+            !Number.isInteger(amount) ||
             amount < 1 ||
             amount > 50000
           ) {
 
             throw new Error(
-              "Amount must be between ₹1 and ₹50,000."
+              "Amount must be a whole number between ₹1 and ₹50,000."
             );
 
           }
@@ -1975,485 +2218,189 @@ window.addMoney =
           if (!utr) {
 
             throw new Error(
-              "UTR is required."
+              "UTR / Transaction ID is required."
             );
 
           }
 
 
-          await addDoc(
-            collection(
-              db,
-              "depositRequests"
-            ),
-            {
-              uid:
-                currentUser.uid,
+          if (utr.length < 4) {
 
-              amount,
+            throw new Error(
+              "Please enter a valid UTR / Transaction ID."
+            );
 
-              utr,
+          }
 
-              mobile,
 
-              email,
+          if (!mobile) {
 
-              status:
-                "pending",
+            throw new Error(
+              "Mobile number is required."
+            );
 
-              createdAt:
-                serverTimestamp()
-            }
+          }
+
+
+          if (!email) {
+
+            throw new Error(
+              "Email is required."
+            );
+
+          }
+
+
+          if (submitBtn) {
+
+            submitBtn.disabled = true;
+
+            submitBtn.textContent =
+              "Submitting...";
+
+          }
+
+
+          const depositRef =
+            await addDoc(
+              collection(
+                db,
+                "depositRequests"
+              ),
+              {
+
+                uid:
+                  user.uid,
+
+                amount:
+                  amount,
+
+                utr:
+                  utr,
+
+                mobile:
+                  mobile,
+
+                email:
+                  email,
+
+                status:
+                  "pending",
+
+                createdAt:
+                  serverTimestamp(),
+
+                updatedAt:
+                  serverTimestamp()
+
+              }
+            );
+
+
+          console.log(
+            "Deposit request created:",
+            depositRef.id
           );
 
 
-/* =========================
-ADD MONEY
-========================= */
-
-window.addMoney = async function () {
-
-/* ---------- LOGIN CHECK ---------- */
-
-if (!auth.currentUser) {
-toast("Please login first.");
-openLogin();
-return;
-}
-
-/* ---------- REFRESH USER ---------- */
-
-try {
-await auth.currentUser.reload();
-currentUser = auth.currentUser;
-} catch (error) {
-console.error("Auth refresh error:", error);
-}
-
-if (!currentUser) {
-toast("Login session expired. Please login again.");
-openLogin();
-return;
-}
-
-/* ---------- QR CODE ---------- */
-
-let qrHtml = "<div style=" margin:15px 0; padding:12px; text-align:center; background:#f5f5f5; border-radius:12px; " > <p style="margin:0;"> Payment QR not configured. </p> </div>";
-
-if (
-publicSettings.qrUrl &&
-isHttpUrl(publicSettings.qrUrl)
-) {
-
-qrHtml = `
-  <div
-    style="
-      text-align:center;
-      margin:15px 0;
-    "
-  >
-
-    <img
-      src="${esc(publicSettings.qrUrl)}"
-      alt="Payment QR"
-      style="
-        display:block;
-        max-width:220px;
-        width:100%;
-        height:auto;
-        margin:0 auto;
-        border-radius:10px;
-        background:#fff;
-      "
-      onerror="
-        this.style.display='none';
-        this.nextElementSibling.style.display='block';
-      "
-    >
-
-    <div
-      style="
-        display:none;
-        padding:15px;
-        background:#fff3cd;
-        border-radius:10px;
-        margin-top:10px;
-      "
-    >
-      Payment QR image could not be loaded.
-    </div>
-
-  </div>
-`;
-
-}
-
-/* ---------- MODAL ---------- */
-
-openModal(`
-
-<h2>Add Money</h2>
-
-<p>
-  Pay using the QR code and submit
-  your UTR / Transaction ID.
-</p>
-
-${qrHtml}
-
-<form
-  id="depositForm"
-  class="formgrid"
->
-
-  <input
-    id="depositAmount"
-    type="number"
-    min="1"
-    max="50000"
-    step="1"
-    inputmode="numeric"
-    placeholder="Amount ₹"
-    required
-  >
+          toast(
+            "Deposit request submitted successfully."
+          );
 
-  <input
-    id="depositUtr"
-    type="text"
-    minlength="4"
-    maxlength="100"
-    autocomplete="off"
-    placeholder="UTR / Transaction ID"
-    required
-  >
 
-  <input
-    id="depositMobile"
-    type="tel"
-    maxlength="20"
-    placeholder="Mobile number"
-    required
-  >
+          closeModal();
 
-  <input
-    id="depositEmail"
-    type="email"
-    placeholder="Email"
-    value="${esc(currentUser.email || "")}"
-    required
-  >
 
-  <button
-    id="depositSubmitBtn"
-    type="submit"
-    class="btn primary"
-  >
-    Submit Deposit
-  </button>
+        } catch (error) {
 
-</form>
+          console.error(
+            "========== DEPOSIT ERROR =========="
+          );
 
-`);
+          console.error(
+            "Error object:",
+            error
+          );
 
-const form = $("depositForm");
+          console.error(
+            "Error code:",
+            error?.code
+          );
 
-const submitBtn = $("depositSubmitBtn");
+          console.error(
+            "Error message:",
+            error?.message
+          );
 
-if (!form) {
-toast("Deposit form could not be loaded.");
-return;
-}
+          console.error(
+            "==================================="
+          );
 
-/* ---------- FORM SUBMIT ---------- */
 
-form.onsubmit = async function (event) {
+          if (submitBtn) {
 
-event.preventDefault();
+            submitBtn.disabled = false;
 
+            submitBtn.textContent =
+              "Submit Deposit";
 
-/* Prevent double submission */
+          }
 
-if (
-  submitBtn &&
-  submitBtn.disabled
-) {
-  return;
-}
 
+          let message =
+            "Unable to submit deposit request.";
 
-try {
 
-  /* ---------- AUTH CHECK ---------- */
+          if (
+            error?.code ===
+            "permission-denied"
+          ) {
 
-  const user = auth.currentUser;
+            message =
+              "Firebase permission denied. Firestore Rules check karein.";
 
-  if (!user) {
+          } else if (
+            error?.code ===
+            "unauthenticated"
+          ) {
 
-    throw new Error(
-      "Login session expired. Please login again."
-    );
+            message =
+              "Login session expired. Please login again.";
 
-  }
+          } else if (
+            error?.code ===
+            "failed-precondition"
+          ) {
 
+            message =
+              "Firestore configuration/index problem.";
 
-  /* ---------- READ FORM ---------- */
+          } else if (
+            error?.code ===
+            "unavailable"
+          ) {
 
-  const amountRaw =
-    $("depositAmount")?.value?.trim() || "";
+            message =
+              "Firebase server temporarily unavailable. Internet check karke dobara try karein.";
 
-  const utr =
-    $("depositUtr")?.value?.trim() || "";
+          } else if (
+            error?.message
+          ) {
 
-  const mobile =
-    $("depositMobile")?.value?.trim() || "";
+            message =
+              error.message;
 
-  const email =
-    $("depositEmail")?.value?.trim() || "";
+          }
 
 
-  /* ---------- AMOUNT ---------- */
+          toast(message);
 
-  const amount =
-    Number(amountRaw);
+        }
 
+      };
 
-  if (
-    !Number.isFinite(amount) ||
-    !Number.isInteger(amount) ||
-    amount < 1 ||
-    amount > 50000
-  ) {
+  };
 
-    throw new Error(
-      "Amount must be a whole number between ₹1 and ₹50,000."
-    );
-
-  }
-
-
-  /* ---------- UTR ---------- */
-
-  if (!utr) {
-
-    throw new Error(
-      "UTR / Transaction ID is required."
-    );
-
-  }
-
-
-  if (utr.length < 4) {
-
-    throw new Error(
-      "Please enter a valid UTR / Transaction ID."
-    );
-
-  }
-
-
-  /* ---------- MOBILE ---------- */
-
-  if (!mobile) {
-
-    throw new Error(
-      "Mobile number is required."
-    );
-
-  }
-
-
-  /* ---------- EMAIL ---------- */
-
-  if (!email) {
-
-    throw new Error(
-      "Email is required."
-    );
-
-  }
-
-
-  /* ---------- DISABLE BUTTON ---------- */
-
-  if (submitBtn) {
-
-    submitBtn.disabled = true;
-    submitBtn.textContent =
-      "Submitting...";
-
-  }
-
-
-  /* ---------- FIRESTORE REFERENCE ---------- */
-
-  const depositCollection =
-    collection(
-      db,
-      "depositRequests"
-    );
-
-
-  /*
-   * Create deposit request.
-   *
-   * IMPORTANT:
-   * We use addDoc() so Firebase generates
-   * a unique document ID.
-   */
-
-  const depositRef =
-    await addDoc(
-      depositCollection,
-      {
-
-        uid:
-          user.uid,
-
-        amount:
-          amount,
-
-        utr:
-          utr,
-
-        mobile:
-          mobile,
-
-        email:
-          email,
-
-        status:
-          "pending",
-
-        createdAt:
-          serverTimestamp(),
-
-        updatedAt:
-          serverTimestamp()
-
-      }
-    );
-
-
-  /* ---------- SUCCESS ---------- */
-
-  console.log(
-    "Deposit request created:",
-    depositRef.id
-  );
-
-
-  toast(
-    "Deposit request submitted successfully."
-  );
-
-
-  closeModal();
-
-
-} catch (error) {
-
-  /* ---------- ERROR LOG ---------- */
-
-  console.error(
-    "========== DEPOSIT ERROR =========="
-  );
-
-  console.error(
-    "Error object:",
-    error
-  );
-
-  console.error(
-    "Error code:",
-    error?.code
-  );
-
-  console.error(
-    "Error name:",
-    error?.name
-  );
-
-  console.error(
-    "Error message:",
-    error?.message
-  );
-
-  console.error(
-    "==================================="
-  );
-
-
-  /* ---------- RESTORE BUTTON ---------- */
-
-  if (submitBtn) {
-
-    submitBtn.disabled = false;
-
-    submitBtn.textContent =
-      "Submit Deposit";
-
-  }
-
-
-  /* ---------- USER MESSAGE ---------- */
-
-  let message =
-    "Unable to submit deposit request.";
-
-
-  if (
-    error?.code ===
-    "permission-denied"
-  ) {
-
-    message =
-      "Firebase permission denied. Firestore Rules check karein.";
-
-  }
-  else if (
-    error?.code ===
-    "unauthenticated"
-  ) {
-
-    message =
-      "Login session expired. Please login again.";
-
-  }
-  else if (
-    error?.code ===
-    "failed-precondition"
-  ) {
-
-    message =
-      "Firestore configuration/index problem.";
-
-  }
-  else if (
-    error?.code ===
-    "unavailable"
-  ) {
-
-    message =
-      "Firebase server temporarily unavailable. Internet check karke dobara try karein.";
-
-  }
-  else if (
-    error?.message
-  ) {
-
-    message =
-      error.message;
-
-  }
-
-
-  toast(message);
-
-}
-
-};
-
-};
 
 /* =========================
    TRANSACTIONS
@@ -2479,6 +2426,7 @@ window.transactions =
             db,
             "walletTransactions"
           ),
+
           where(
             "uid",
             "==",
@@ -2495,7 +2443,9 @@ window.transactions =
         snap.docs
           .map(
             item => ({
-              id: item.id,
+              id:
+                item.id,
+
               ...item.data()
             })
           )
@@ -2512,7 +2462,10 @@ window.transactions =
 
       openModal(`
 
-        <h2>Transactions</h2>
+        <h2>
+          Transactions
+        </h2>
+
 
         ${
           rows.length
@@ -2538,12 +2491,15 @@ window.transactions =
                       >
 
                         <strong>
+
                           ${
                             amount >= 0
                               ? "+"
                               : ""
                           }₹${amount}
+
                         </strong>
+
 
                         <div>
                           ${esc(
@@ -2552,6 +2508,7 @@ window.transactions =
                             "Transaction"
                           )}
                         </div>
+
 
                         <small>
                           ${esc(
@@ -2568,10 +2525,13 @@ window.transactions =
                   }
                 )
                 .join("")
+
             : `
+
               <p>
                 No transactions found.
               </p>
+
             `
         }
 
@@ -2625,7 +2585,7 @@ window.logoutUser =
 
 
 /* =========================
-   NEW FIRESTORE JOIN
+   JOIN TOURNAMENT
 ========================= */
 
 window.joinTournament =
@@ -2670,7 +2630,6 @@ window.joinTournament =
 
 /* =========================
    JOIN FORM
-   FIRESTORE VERSION
 ========================= */
 
 function joinForm(t) {
@@ -2717,6 +2676,7 @@ function joinForm(t) {
 
 
       <button
+        id="joinSubmitBtn"
         type="submit"
         class="btn primary"
       >
@@ -2732,6 +2692,20 @@ function joinForm(t) {
     async event => {
 
       event.preventDefault();
+
+
+      const submitBtn =
+        $("joinSubmitBtn");
+
+
+      if (
+        submitBtn &&
+        submitBtn.disabled
+      ) {
+
+        return;
+
+      }
 
 
       try {
@@ -2813,22 +2787,19 @@ function joinForm(t) {
           `${uid}_${t.id}`;
 
 
-        /*
-         * Check old/duplicate participant
-         * records before transaction.
-         */
-
         const duplicateQuery =
           query(
             collection(
               db,
               "tournamentParticipants"
             ),
+
             where(
               "uid",
               "==",
               uid
             ),
+
             where(
               "tournamentId",
               "==",
@@ -2854,14 +2825,6 @@ function joinForm(t) {
         }
 
 
-        const userRef =
-          doc(
-            db,
-            "users",
-            uid
-          );
-
-
         const tournamentRef =
           doc(
             db,
@@ -2878,29 +2841,19 @@ function joinForm(t) {
           );
 
 
-        const walletTransactionRef =
-          doc(
-            collection(
-              db,
-              "walletTransactions"
-            )
-          );
+        if (submitBtn) {
+
+          submitBtn.disabled = true;
+
+          submitBtn.textContent =
+            "Joining...";
+
+        }
 
 
         await runTransaction(
           db,
           async transaction => {
-
-            /*
-             * IMPORTANT:
-             * Read all documents before writes.
-             */
-
-            const userSnap =
-              await transaction.get(
-                userRef
-              );
-
 
             const tournamentSnap =
               await transaction.get(
@@ -2912,15 +2865,6 @@ function joinForm(t) {
               await transaction.get(
                 participantRef
               );
-
-
-            if (!userSnap.exists()) {
-
-              throw new Error(
-                "User profile not found."
-              );
-
-            }
 
 
             if (
@@ -2945,17 +2889,11 @@ function joinForm(t) {
             }
 
 
-            const userData =
-              userSnap.data() || {};
-
-
             const tournamentData =
               tournamentSnap.data() || {};
 
 
-            /*
-             * Registration status
-             */
+            /* ---------- STATUS ---------- */
 
             if (
               tournamentData.status ===
@@ -2981,9 +2919,7 @@ function joinForm(t) {
             }
 
 
-            /*
-             * Registration end check
-             */
+            /* ---------- REGISTRATION END ---------- */
 
             const registrationEnd =
               tournamentData.registrationEnd ||
@@ -3008,9 +2944,7 @@ function joinForm(t) {
             }
 
 
-            /*
-             * Slot check
-             */
+            /* ---------- SLOTS ---------- */
 
             const maxSlots =
               Number(
@@ -3040,9 +2974,7 @@ function joinForm(t) {
             }
 
 
-            /*
-             * Entry fee
-             */
+            /* ---------- ENTRY FEE ---------- */
 
             const entryFee =
               Math.max(
@@ -3054,49 +2986,32 @@ function joinForm(t) {
               );
 
 
-            const walletBalance =
-              Math.max(
-                0,
-                Number(
-                  userData.walletBalance ||
-                  0
-                )
-              );
-
-
             /*
-             * Wallet check
+             * IMPORTANT:
+             *
+             * With secure Firestore Rules,
+             * normal users must NOT be allowed
+             * to change walletBalance.
+             *
+             * Therefore paid tournament joining
+             * must be processed server-side.
              */
 
-            if (
-              entryFee > 0 &&
-              walletBalance <
-                entryFee
-            ) {
+            if (entryFee > 0) {
 
               throw new Error(
-                `Insufficient wallet balance. Required ₹${entryFee}, available ₹${walletBalance}.`
+                "Paid tournament entry is temporarily unavailable. Secure wallet payment setup required."
               );
 
             }
 
 
-            /*
-             * New wallet balance
-             */
-
-            const newBalance =
-              walletBalance -
-              entryFee;
-
-
-            /*
-             * Create participant
-             */
+            /* ---------- PARTICIPANT ---------- */
 
             transaction.set(
               participantRef,
               {
+
                 uid,
 
                 tournamentId:
@@ -3115,58 +3030,13 @@ function joinForm(t) {
 
                 upiId,
 
-                entryFee,
+                entryFee: 0,
 
                 joinedAt:
                   serverTimestamp()
+
               }
             );
-
-
-            /*
-             * Deduct wallet only
-             * when tournament is paid.
-             */
-
-            if (entryFee > 0) {
-
-              transaction.update(
-                userRef,
-                {
-                  walletBalance:
-                    newBalance
-                }
-              );
-
-
-              transaction.set(
-                walletTransactionRef,
-                {
-                  uid,
-
-                  type:
-                    "tournament_entry",
-
-                  amount:
-                    -entryFee,
-
-                  description:
-                    "Entry fee - " +
-                    (
-                      tournamentData.name ||
-                      t.name ||
-                      "Tournament"
-                    ),
-
-                  tournamentId:
-                    t.id,
-
-                  createdAt:
-                    serverTimestamp()
-                }
-              );
-
-            }
 
           }
         );
@@ -3180,11 +3050,6 @@ function joinForm(t) {
         closeModal();
 
 
-        /*
-         * Refresh home so Joined
-         * state appears immediately.
-         */
-
         await renderHome();
 
 
@@ -3194,6 +3059,16 @@ function joinForm(t) {
           "Join error:",
           error
         );
+
+
+        if (submitBtn) {
+
+          submitBtn.disabled = false;
+
+          submitBtn.textContent =
+            "Confirm Join";
+
+        }
 
 
         toast(
@@ -3225,7 +3100,9 @@ function renderStatic(page) {
 
       <div class="static-page">
 
-        <h1>About eSports24</h1>
+        <h1>
+          About eSports24
+        </h1>
 
         <p>
           eSports24 is a BGMI tournament
@@ -3248,7 +3125,9 @@ function renderStatic(page) {
 
       <div class="static-page">
 
-        <h1>Terms & Conditions</h1>
+        <h1>
+          Terms & Conditions
+        </h1>
 
         <p>
           Players must provide correct
@@ -3271,7 +3150,9 @@ function renderStatic(page) {
 
       <div class="static-page">
 
-        <h1>Privacy Policy</h1>
+        <h1>
+          Privacy Policy
+        </h1>
 
         <p>
           User information is used for
@@ -3294,7 +3175,10 @@ function renderStatic(page) {
 
       <div class="static-page">
 
-        <h1>Support</h1>
+        <h1>
+          Support
+        </h1>
+
 
         <form
           id="supportForm"
@@ -3307,11 +3191,13 @@ function renderStatic(page) {
             required
           >
 
+
           <textarea
             id="supportMessage"
             placeholder="Your message"
             required
           ></textarea>
+
 
           <button
             type="submit"
@@ -3346,12 +3232,43 @@ function renderStatic(page) {
 
         try {
 
+          const subject =
+            $("supportSubject")
+              .value
+              .trim();
+
+
+          const message =
+            $("supportMessage")
+              .value
+              .trim();
+
+
+          if (!subject) {
+
+            throw new Error(
+              "Subject is required."
+            );
+
+          }
+
+
+          if (!message) {
+
+            throw new Error(
+              "Message is required."
+            );
+
+          }
+
+
           await addDoc(
             collection(
               db,
               "supportMessages"
             ),
             {
+
               uid:
                 currentUser.uid,
 
@@ -3359,21 +3276,16 @@ function renderStatic(page) {
                 currentUser.email ||
                 "",
 
-              subject:
-                $("supportSubject")
-                  .value
-                  .trim(),
+              subject,
 
-              message:
-                $("supportMessage")
-                  .value
-                  .trim(),
+              message,
 
               status:
                 "open",
 
               createdAt:
                 serverTimestamp()
+
             }
           );
 
@@ -3456,6 +3368,9 @@ async function route() {
   await renderHome();
 
 }
+
+
+window.route = route;
 
 
 window.addEventListener(
@@ -3556,10 +3471,14 @@ async function startApp() {
     if (appEl) {
 
       appEl.innerHTML = `
+
         <div class="empty">
+
           Unable to start app.
           Please refresh the page.
+
         </div>
+
       `;
 
     }
