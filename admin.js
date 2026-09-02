@@ -1,7 +1,4 @@
-import {
-  initializeApp
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -17,13 +14,13 @@ import {
   onSnapshot,
   doc,
   getDoc,
-  setDoc
+  setDoc,
+  addDoc,
+  serverTimestamp,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-import {
-  firebaseConfig
-} from "./firebase-config.js";
-
+import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -31,24 +28,17 @@ const db = getFirestore(app);
 
 const $ = id => document.getElementById(id);
 
-
-/* =========================
-   HELPERS
-========================= */
-
-function isHttpUrl(value) {
+function isHttpUrl(v) {
   try {
-    const url = new URL(String(value || "").trim());
-    return url.protocol === "https:";
+    const u = new URL(String(v || "").trim());
+    return u.protocol === "https:";
   } catch {
     return false;
   }
 }
 
-
 function toast(message) {
   $("toast").textContent = message;
-
   $("toast").classList.add("show");
 
   setTimeout(() => {
@@ -56,139 +46,102 @@ function toast(message) {
   }, 2500);
 }
 
-
-/* =========================
-   ADMIN CHECK
-========================= */
-
 async function isAdmin(uid) {
-
-  const snapshot = await getDoc(
-    doc(db, "users", uid)
-  );
-
-  return (
-    snapshot.exists() &&
-    snapshot.data().role === "admin"
-  );
+  const snap = await getDoc(doc(db, "users", uid));
+  return snap.exists() && snap.data().role === "admin";
 }
 
 
 /* =========================
-   AUTH STATE
+   AUTH
 ========================= */
 
 onAuthStateChanged(auth, async user => {
-
   if (!user) {
-
     $("dashboard").hidden = true;
     $("adminLoginCard").hidden = false;
-
     return;
   }
 
+  try {
+    const admin = await isAdmin(user.uid);
 
-  if (!(await isAdmin(user.uid))) {
+    if (!admin) {
+      toast("Not authorized as admin.");
+      await signOut(auth);
+      return;
+    }
 
-    toast("Not authorized as admin.");
+    $("adminLoginCard").hidden = true;
+    $("dashboard").hidden = false;
 
-    await signOut(auth);
-
-    return;
+    load();
+  } catch (error) {
+    toast(error.message);
   }
-
-
-  $("adminLoginCard").hidden = true;
-  $("dashboard").hidden = false;
-
-  load();
 });
 
 
-/* =========================
-   LOGIN
-========================= */
-
-$("adminLoginForm").onsubmit = async event => {
-
-  event.preventDefault();
+$("adminLoginForm").onsubmit = async e => {
+  e.preventDefault();
 
   try {
-
     await signInWithEmailAndPassword(
       auth,
-      $("adminEmail").value,
+      $("adminEmail").value.trim(),
       $("adminPassword").value
     );
-
   } catch (error) {
-
     toast(error.message);
   }
 };
 
 
-/* =========================
-   LOGOUT
-========================= */
-
-$("adminLogout").onclick = () => {
-  signOut(auth);
-};
+$("adminLogout").onclick = () => signOut(auth);
 
 
 /* =========================
-   LOAD ADMIN
+   LOAD ADMIN DATA
 ========================= */
 
 async function load() {
 
+  try {
+    const settings = await getDoc(
+      doc(db, "adminSettings", "public")
+    );
+
+    const data = settings.data() || {};
+
+    $("logoUrl").value = data.logoUrl || "";
+    $("splashUrl").value = data.splashUrl || "";
+    $("qrUrl").value = data.qrUrl || "";
+  } catch (error) {
+    console.warn("Settings unavailable:", error);
+  }
+
+
   /* SETTINGS */
 
-  const settings = await getDoc(
-    doc(db, "adminSettings", "public")
-  );
-
-  const data = settings.data() || {};
-
-  $("logoUrl").value = data.logoUrl || "";
-  $("splashUrl").value = data.splashUrl || "";
-  $("qrUrl").value = data.qrUrl || "";
-
-
-  /* SAVE SETTINGS */
-
-  $("settingsForm").onsubmit = async event => {
-
-    event.preventDefault();
+  $("settingsForm").onsubmit = async e => {
+    e.preventDefault();
 
     try {
-
       const logo = $("logoUrl").value.trim();
       const splash = $("splashUrl").value.trim();
       const qr = $("qrUrl").value.trim();
 
-
-      for (
-        const [label, url]
-        of [
-          ["Logo", logo],
-          ["Splash", splash],
-          ["Payment QR", qr]
-        ]
-      ) {
-
-        if (
-          url &&
-          !isHttpUrl(url)
-        ) {
+      for (const [label, url] of [
+        ["Logo", logo],
+        ["Splash", splash],
+        ["Payment QR", qr]
+      ]) {
+        if (url && !isHttpUrl(url)) {
           throw new Error(
-            `${label} must be a valid https URL.`
+            `${label} must be a valid HTTPS URL.`
           );
         }
       }
-
 
       await setDoc(
         doc(db, "adminSettings", "public"),
@@ -196,97 +149,44 @@ async function load() {
           logoUrl: logo,
           splashUrl: splash,
           qrUrl: qr,
-          updatedAt: new Date(),
+          updatedAt: serverTimestamp(),
           updatedBy: auth.currentUser.uid
         }
       );
 
-
       toast("Settings saved.");
-
     } catch (error) {
-
       toast(error.message);
     }
   };
 
 
-  /* =========================
-     FREE / PAID
-  ========================= */
+  /* FREE / PAID */
 
   $("tFree").onchange = () => {
 
-    const isFree =
-      $("tFree").value === "true";
+    const free = $("tFree").value === "true";
 
+    $("tFee").disabled = free;
 
-    $("tFee").disabled = isFree;
-
-
-    if (isFree) {
+    if (free) {
       $("tFee").value = 0;
     }
   };
 
 
-  /* =========================
-     FORMS
-  ========================= */
+  /* TOURNAMENT */
 
-  $("tournamentForm").onsubmit =
-    createTournament;
-
-  $("roomForm").onsubmit =
-    roomUpdate;
+  $("tournamentForm").onsubmit = createTournament;
 
 
-  /* =========================
-     LOAD DATA
-  ========================= */
+  /* ROOM */
 
-  loadDeposits();
+  $("roomForm").onsubmit = roomUpdate;
+
+
   loadTournaments();
   loadPlayers();
-}
-
-
-/* =========================
-   API
-========================= */
-
-async function api(path, body) {
-
-  const token =
-    await auth.currentUser.getIdToken();
-
-
-  const response = await fetch(
-    path,
-    {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization":
-          "Bearer " + token
-      },
-
-      body: JSON.stringify(body)
-    }
-  );
-
-
-  const result =
-    await response.json();
-
-
-  if (!result.success) {
-    throw new Error(result.message);
-  }
-
-
-  return result;
 }
 
 
@@ -294,140 +194,154 @@ async function api(path, body) {
    CREATE TOURNAMENT
 ========================= */
 
-async function createTournament(event) {
-
-  event.preventDefault();
-
+async function createTournament(e) {
+  e.preventDefault();
 
   try {
 
-    /* IMAGE URL */
+    const name = $("tName").value.trim();
+    const imageUrl = $("tImage").value.trim();
+    const mode = $("tMode").value;
+    const isFree = $("tFree").value === "true";
 
-    const imageUrl =
-      $("tImage").value.trim();
+    const entryFee = Number(
+      $("tFee").value || 0
+    );
 
-
-    if (!isHttpUrl(imageUrl)) {
-
-      throw new Error(
-        "Tournament image must be a valid https URL."
-      );
-    }
-
-
-    /* ENTRY FEE */
-
-    const entryFee =
-      Number($("tFee").value || 0);
-
-
-    if (entryFee < 0) {
-
-      throw new Error(
-        "Entry Fee cannot be negative."
-      );
-    }
-
+    const totalSlots = Number(
+      $("tSlots").value || 0
+    );
 
     /* PER KILL */
+    const perKill = Number(
+      $("tKill").value || 0
+    );
 
-    const perKill =
-      Number($("tKill").value || 0);
+    const registrationEnd = $("tReg").value;
+    const matchDateTime = $("tDate").value;
 
+    if (!name) {
+      throw new Error("Tournament name is required.");
+    }
 
-    if (perKill < 0) {
-
+    if (!isHttpUrl(imageUrl)) {
       throw new Error(
-        "Per Kill cannot be negative."
+        "Tournament image must be a valid HTTPS URL."
       );
     }
 
-
-    /* SLOTS */
-
-    const totalSlots =
-      Number($("tSlots").value);
-
-
-    if (
-      !Number.isInteger(totalSlots) ||
-      totalSlots < 1
-    ) {
-
+    if (totalSlots < 1) {
       throw new Error(
         "Total slots must be at least 1."
       );
     }
 
+    if (entryFee < 0) {
+      throw new Error(
+        "Entry fee cannot be negative."
+      );
+    }
 
-    /* PRIZES */
+    if (perKill < 0) {
+      throw new Error(
+        "Per kill cannot be negative."
+      );
+    }
+
+
+    /* PRIZE JSON */
 
     let prizes = {};
 
-
     if ($("tPrizes").value.trim()) {
+      try {
+        prizes = JSON.parse(
+          $("tPrizes").value.trim()
+        );
+      } catch {
+        throw new Error(
+          "Prize JSON is invalid."
+        );
+      }
+    }
 
-      prizes =
-        JSON.parse(
-          $("tPrizes").value
+
+    /* TOTAL PRIZE */
+
+    let prizeTotal = 0;
+
+    if (
+      prizes &&
+      typeof prizes === "object" &&
+      !Array.isArray(prizes)
+    ) {
+      prizeTotal = Object.values(prizes)
+        .reduce(
+          (total, value) =>
+            total + Number(value || 0),
+          0
         );
     }
 
 
-    /* CREATE */
+    /* FIRESTORE DOCUMENT */
 
-    const result =
-      await api(
-        "/api/createTournament",
-        {
+    const tournamentData = {
 
-          name:
-            $("tName").value.trim(),
+      name,
 
-          imageUrl,
+      imageUrl,
 
-          mode:
-            $("tMode").value,
+      mode,
 
-          isFree:
-            $("tFree").value === "true",
+      isFree,
 
-          /* SEPARATE ENTRY FEE */
-          entryFee,
+      entryFee: isFree ? 0 : entryFee,
 
-          /* SEPARATE PER KILL */
-          perKill,
+      totalSlots,
 
-          totalSlots,
+      joinedCount: 0,
 
-          registrationEnd:
-            $("tReg").value,
+      /* ⭐ PER KILL */
+      perKill,
 
-          matchDateTime:
-            $("tDate").value,
+      registrationEnd,
 
-          prizes
-        }
-      );
+      matchDateTime,
+
+      prizes,
+
+      prizeTotal,
+
+      createdAt: serverTimestamp(),
+
+      createdBy: auth.currentUser.uid
+
+    };
 
 
-    toast(
-      "Created: " +
-      result.tournamentId
+    const tournamentRef = await addDoc(
+      collection(db, "tournaments"),
+      tournamentData
     );
 
 
-    event.target.reset();
+    toast(
+      "Tournament created: " +
+      tournamentRef.id
+    );
 
+    $("tournamentForm").reset();
 
-    /* RESET DEFAULT VALUES */
-
-    $("tFee").value = 0;
-    $("tKill").value = 0;
+    $("tFree").value = "false";
     $("tFee").disabled = false;
 
-
   } catch (error) {
+
+    console.error(
+      "Create tournament error:",
+      error
+    );
 
     toast(error.message);
   }
@@ -438,169 +352,51 @@ async function createTournament(event) {
    ROOM UPDATE
 ========================= */
 
-async function roomUpdate(event) {
-
-  event.preventDefault();
-
+async function roomUpdate(e) {
+  e.preventDefault();
 
   try {
 
-    await api(
-      "/api/updateRoomCredentials",
+    const tournamentId =
+      $("roomTournamentId").value.trim();
+
+    const roomId =
+      $("roomId").value.trim();
+
+    const roomPassword =
+      $("roomPassword").value.trim();
+
+
+    if (!tournamentId) {
+      throw new Error(
+        "Tournament ID is required."
+      );
+    }
+
+    await setDoc(
+      doc(
+        db,
+        "roomCredentials",
+        tournamentId
+      ),
       {
-
-        tournamentId:
-          $("roomTournamentId").value,
-
-        roomId:
-          $("roomId").value,
-
-        roomPassword:
-          $("roomPassword").value
+        tournamentId,
+        roomId,
+        roomPassword,
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser.uid
       }
     );
-
 
     toast(
       "Room credentials updated."
     );
 
-  } catch (error) {
+    e.target.reset();
 
+  } catch (error) {
     toast(error.message);
   }
-}
-
-
-/* =========================
-   DEPOSITS
-========================= */
-
-function loadDeposits() {
-
-  onSnapshot(
-
-    query(
-      collection(
-        db,
-        "depositRequests"
-      ),
-      orderBy(
-        "createdAt",
-        "desc"
-      )
-    ),
-
-    snapshot => {
-
-      $("deposits").innerHTML =
-        snapshot.docs
-          .map(docSnap => {
-
-            const data =
-              docSnap.data();
-
-
-            return `
-              <div class="listrow">
-
-                <b>
-                  ${esc(data.amount)}
-                  ·
-                  ${esc(data.utr)}
-                </b>
-
-                —
-                ${esc(data.status)}
-
-                <br>
-
-                ${esc(data.email)}
-                ·
-                ${esc(data.mobile)}
-
-                ${
-                  data.status === "pending"
-                  ? `
-                    <button
-                      class="btn primary"
-                      data-approve="${docSnap.id}"
-                    >
-                      Approve
-                    </button>
-
-                    <button
-                      class="btn danger"
-                      data-reject="${docSnap.id}"
-                    >
-                      Reject
-                    </button>
-                  `
-                  : ""
-                }
-
-              </div>
-            `;
-
-          })
-          .join("")
-        || "No requests.";
-
-
-      document
-        .querySelectorAll("[data-approve]")
-        .forEach(button => {
-
-          button.onclick =
-            async () => {
-
-              try {
-
-                await api(
-                  "/api/approveDeposit",
-                  {
-                    depositId:
-                      button.dataset.approve
-                  }
-                );
-
-                toast("Approved");
-
-              } catch (error) {
-
-                toast(error.message);
-              }
-            };
-        });
-
-
-      document
-        .querySelectorAll("[data-reject]")
-        .forEach(button => {
-
-          button.onclick =
-            async () => {
-
-              try {
-
-                await api(
-                  "/api/rejectDeposit",
-                  {
-                    depositId:
-                      button.dataset.reject
-                  }
-                );
-
-                toast("Rejected");
-
-              } catch (error) {
-
-                toast(error.message);
-              }
-            };
-        });
-    }
-  );
 }
 
 
@@ -610,110 +406,102 @@ function loadDeposits() {
 
 function loadTournaments() {
 
+  const q = query(
+    collection(db, "tournaments"),
+    orderBy("createdAt", "desc")
+  );
+
   onSnapshot(
-
-    query(
-      collection(
-        db,
-        "tournaments"
-      ),
-      orderBy(
-        "createdAt",
-        "desc"
-      )
-    ),
-
+    q,
     snapshot => {
 
       $("adminTournaments").innerHTML =
-        snapshot.docs
-          .map(docSnap => {
+        snapshot.docs.map(d => {
 
-            const data =
-              docSnap.data();
+          const x = d.data();
 
+          return `
+            <div class="listrow">
 
-            return `
-              <div class="listrow">
+              <b>${esc(x.name)}</b>
 
-                <b>
-                  ${esc(data.name)}
-                </b>
+              · ${esc(x.mode)}
 
-                · ${esc(data.mode)}
+              · Entry ₹${Number(
+                x.entryFee || 0
+              )}
 
-                · Entry ₹${Number(
-                  data.entryFee || 0
-                )}
+              · Per Kill ₹${Number(
+                x.perKill || 0
+              )}
 
-                · Per Kill ₹${Number(
-                  data.perKill || 0
-                )}
+              · Slots ${Number(
+                x.joinedCount || 0
+              )}/${Number(
+                x.totalSlots || 0
+              )}
 
-                · slots
-                ${Number(
-                  data.joinedCount || 0
-                )}
-                /
-                ${Number(
-                  data.totalSlots || 0
-                )}
+              <br>
 
-                <br>
+              <small>${d.id}</small>
 
-                <small>
-                  ${docSnap.id}
-                </small>
+              <button
+                class="btn danger"
+                data-del="${d.id}">
+                Delete
+              </button>
 
-                <button
-                  class="btn danger"
-                  data-del="${docSnap.id}"
-                >
-                  Delete
-                </button>
+            </div>
+          `;
 
-              </div>
-            `;
-
-          })
-          .join("")
-        || "No tournaments.";
+        }).join("") ||
+        "No tournaments.";
 
 
       document
         .querySelectorAll("[data-del]")
         .forEach(button => {
 
-          button.onclick =
-            async () => {
+          button.onclick = async () => {
 
-              if (
-                !confirm(
-                  "Delete this tournament?"
+            if (
+              !confirm(
+                "Delete this tournament?"
+              )
+            ) {
+              return;
+            }
+
+            try {
+
+              await deleteDoc(
+                doc(
+                  db,
+                  "tournaments",
+                  button.dataset.del
                 )
-              ) {
-                return;
-              }
+              );
 
+              toast(
+                "Tournament deleted."
+              );
 
-              try {
+            } catch (error) {
+              toast(error.message);
+            }
 
-                await api(
-                  "/api/deleteTournament",
-                  {
-                    tournamentId:
-                      button.dataset.del
-                  }
-                );
+          };
 
-                toast("Deleted");
-
-              } catch (error) {
-
-                toast(error.message);
-              }
-            };
         });
+
+    },
+    error => {
+      console.error(
+        "Tournament listener:",
+        error
+      );
+
+      toast(error.message);
     }
   );
 }
@@ -725,63 +513,61 @@ function loadTournaments() {
 
 function loadPlayers() {
 
+  const q = query(
+    collection(db, "tournamentParticipants"),
+    orderBy("joinedAt", "desc")
+  );
+
   onSnapshot(
-
-    query(
-      collection(
-        db,
-        "tournamentParticipants"
-      ),
-      orderBy(
-        "joinedAt",
-        "desc"
-      )
-    ),
-
+    q,
     snapshot => {
 
       $("players").innerHTML =
-        snapshot.docs
-          .map(docSnap => {
+        snapshot.docs.map(d => {
 
-            const data =
-              docSnap.data();
+          const x = d.data();
 
+          return `
+            <div class="listrow">
 
-            return `
-              <div class="listrow">
+              <b>${esc(
+                x.tournamentName
+              )}</b>
 
-                <b>
-                  ${esc(
-                    data.tournamentName
-                  )}
-                </b>
+              <br>
 
-                <br>
+              ${esc(
+                x.characterName
+              )}
 
-                ${esc(
-                  data.characterName
-                )}
+              · BGMI ${esc(
+                x.bgmiId
+              )}
 
-                · BGMI
-                ${esc(data.bgmiId)}
+              · WhatsApp ${esc(
+                x.whatsapp
+              )}
 
-                · WhatsApp
-                ${esc(data.whatsapp)}
+              · UPI ${esc(
+                x.upiId
+              )}
 
-                · UPI
-                ${esc(data.upiId)}
+              · ₹${Number(
+                x.entryFee || 0
+              )}
 
-                · ₹${Number(
-                  data.entryFee || 0
-                )}
+            </div>
+          `;
 
-              </div>
-            `;
+        }).join("") ||
+        "No players.";
 
-          })
-          .join("")
-        || "No players.";
+    },
+    error => {
+      console.error(
+        "Players listener:",
+        error
+      );
     }
   );
 }
@@ -793,16 +579,15 @@ function loadPlayers() {
 
 function esc(value) {
 
-  return String(
-    value ?? ""
-  ).replace(
-    /[&<>"']/g,
-    char => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    }[char])
-  );
+  return String(value ?? "")
+    .replace(
+      /[&<>"']/g,
+      m => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[m])
+    );
 }
