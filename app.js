@@ -2007,33 +2007,453 @@ window.addMoney =
           );
 
 
-          toast(
-            "Deposit request submitted successfully."
-          );
+/* =========================
+ADD MONEY
+========================= */
+
+window.addMoney = async function () {
+
+/* ---------- LOGIN CHECK ---------- */
+
+if (!auth.currentUser) {
+toast("Please login first.");
+openLogin();
+return;
+}
+
+/* ---------- REFRESH USER ---------- */
+
+try {
+await auth.currentUser.reload();
+currentUser = auth.currentUser;
+} catch (error) {
+console.error("Auth refresh error:", error);
+}
+
+if (!currentUser) {
+toast("Login session expired. Please login again.");
+openLogin();
+return;
+}
+
+/* ---------- QR CODE ---------- */
+
+let qrHtml = "<div style=" margin:15px 0; padding:12px; text-align:center; background:#f5f5f5; border-radius:12px; " > <p style="margin:0;"> Payment QR not configured. </p> </div>";
+
+if (
+publicSettings.qrUrl &&
+isHttpUrl(publicSettings.qrUrl)
+) {
+
+qrHtml = `
+  <div
+    style="
+      text-align:center;
+      margin:15px 0;
+    "
+  >
+
+    <img
+      src="${esc(publicSettings.qrUrl)}"
+      alt="Payment QR"
+      style="
+        display:block;
+        max-width:220px;
+        width:100%;
+        height:auto;
+        margin:0 auto;
+        border-radius:10px;
+        background:#fff;
+      "
+      onerror="
+        this.style.display='none';
+        this.nextElementSibling.style.display='block';
+      "
+    >
+
+    <div
+      style="
+        display:none;
+        padding:15px;
+        background:#fff3cd;
+        border-radius:10px;
+        margin-top:10px;
+      "
+    >
+      Payment QR image could not be loaded.
+    </div>
+
+  </div>
+`;
+
+}
+
+/* ---------- MODAL ---------- */
+
+openModal(`
+
+<h2>Add Money</h2>
+
+<p>
+  Pay using the QR code and submit
+  your UTR / Transaction ID.
+</p>
+
+${qrHtml}
+
+<form
+  id="depositForm"
+  class="formgrid"
+>
+
+  <input
+    id="depositAmount"
+    type="number"
+    min="1"
+    max="50000"
+    step="1"
+    inputmode="numeric"
+    placeholder="Amount ₹"
+    required
+  >
+
+  <input
+    id="depositUtr"
+    type="text"
+    minlength="4"
+    maxlength="100"
+    autocomplete="off"
+    placeholder="UTR / Transaction ID"
+    required
+  >
+
+  <input
+    id="depositMobile"
+    type="tel"
+    maxlength="20"
+    placeholder="Mobile number"
+    required
+  >
+
+  <input
+    id="depositEmail"
+    type="email"
+    placeholder="Email"
+    value="${esc(currentUser.email || "")}"
+    required
+  >
+
+  <button
+    id="depositSubmitBtn"
+    type="submit"
+    class="btn primary"
+  >
+    Submit Deposit
+  </button>
+
+</form>
+
+`);
+
+const form = $("depositForm");
+
+const submitBtn = $("depositSubmitBtn");
+
+if (!form) {
+toast("Deposit form could not be loaded.");
+return;
+}
+
+/* ---------- FORM SUBMIT ---------- */
+
+form.onsubmit = async function (event) {
+
+event.preventDefault();
 
 
-          closeModal();
+/* Prevent double submission */
+
+if (
+  submitBtn &&
+  submitBtn.disabled
+) {
+  return;
+}
 
 
-        } catch (error) {
+try {
 
-          console.error(
-            "Deposit error:",
-            error
-          );
+  /* ---------- AUTH CHECK ---------- */
+
+  const user = auth.currentUser;
+
+  if (!user) {
+
+    throw new Error(
+      "Login session expired. Please login again."
+    );
+
+  }
 
 
-          toast(
-            error.message ||
-            "Unable to submit deposit."
-          );
+  /* ---------- READ FORM ---------- */
 
-        }
+  const amountRaw =
+    $("depositAmount")?.value?.trim() || "";
 
-      };
+  const utr =
+    $("depositUtr")?.value?.trim() || "";
+
+  const mobile =
+    $("depositMobile")?.value?.trim() || "";
+
+  const email =
+    $("depositEmail")?.value?.trim() || "";
+
+
+  /* ---------- AMOUNT ---------- */
+
+  const amount =
+    Number(amountRaw);
+
+
+  if (
+    !Number.isFinite(amount) ||
+    !Number.isInteger(amount) ||
+    amount < 1 ||
+    amount > 50000
+  ) {
+
+    throw new Error(
+      "Amount must be a whole number between ₹1 and ₹50,000."
+    );
+
+  }
+
+
+  /* ---------- UTR ---------- */
+
+  if (!utr) {
+
+    throw new Error(
+      "UTR / Transaction ID is required."
+    );
+
+  }
+
+
+  if (utr.length < 4) {
+
+    throw new Error(
+      "Please enter a valid UTR / Transaction ID."
+    );
+
+  }
+
+
+  /* ---------- MOBILE ---------- */
+
+  if (!mobile) {
+
+    throw new Error(
+      "Mobile number is required."
+    );
+
+  }
+
+
+  /* ---------- EMAIL ---------- */
+
+  if (!email) {
+
+    throw new Error(
+      "Email is required."
+    );
+
+  }
+
+
+  /* ---------- DISABLE BUTTON ---------- */
+
+  if (submitBtn) {
+
+    submitBtn.disabled = true;
+    submitBtn.textContent =
+      "Submitting...";
+
+  }
+
+
+  /* ---------- FIRESTORE REFERENCE ---------- */
+
+  const depositCollection =
+    collection(
+      db,
+      "depositRequests"
+    );
+
+
+  /*
+   * Create deposit request.
+   *
+   * IMPORTANT:
+   * We use addDoc() so Firebase generates
+   * a unique document ID.
+   */
+
+  const depositRef =
+    await addDoc(
+      depositCollection,
+      {
+
+        uid:
+          user.uid,
+
+        amount:
+          amount,
+
+        utr:
+          utr,
+
+        mobile:
+          mobile,
+
+        email:
+          email,
+
+        status:
+          "pending",
+
+        createdAt:
+          serverTimestamp(),
+
+        updatedAt:
+          serverTimestamp()
+
+      }
+    );
+
+
+  /* ---------- SUCCESS ---------- */
+
+  console.log(
+    "Deposit request created:",
+    depositRef.id
+  );
+
+
+  toast(
+    "Deposit request submitted successfully."
+  );
+
+
+  closeModal();
+
+
+} catch (error) {
+
+  /* ---------- ERROR LOG ---------- */
+
+  console.error(
+    "========== DEPOSIT ERROR =========="
+  );
+
+  console.error(
+    "Error object:",
+    error
+  );
+
+  console.error(
+    "Error code:",
+    error?.code
+  );
+
+  console.error(
+    "Error name:",
+    error?.name
+  );
+
+  console.error(
+    "Error message:",
+    error?.message
+  );
+
+  console.error(
+    "==================================="
+  );
+
+
+  /* ---------- RESTORE BUTTON ---------- */
+
+  if (submitBtn) {
+
+    submitBtn.disabled = false;
+
+    submitBtn.textContent =
+      "Submit Deposit";
+
+  }
+
+
+  /* ---------- USER MESSAGE ---------- */
+
+  let message =
+    "Unable to submit deposit request.";
+
+
+  if (
+    error?.code ===
+    "permission-denied"
+  ) {
+
+    message =
+      "Firebase permission denied. Firestore Rules check karein.";
+
+  }
+  else if (
+    error?.code ===
+    "unauthenticated"
+  ) {
+
+    message =
+      "Login session expired. Please login again.";
+
+  }
+  else if (
+    error?.code ===
+    "failed-precondition"
+  ) {
+
+    message =
+      "Firestore configuration/index problem.";
+
+  }
+  else if (
+    error?.code ===
+    "unavailable"
+  ) {
+
+    message =
+      "Firebase server temporarily unavailable. Internet check karke dobara try karein.";
+
+  }
+  else if (
+    error?.message
+  ) {
+
+    message =
+      error.message;
+
+  }
+
+
+  toast(message);
+
+}
 
 };
 
+};
 
 /* =========================
    TRANSACTIONS
