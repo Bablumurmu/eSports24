@@ -18,7 +18,8 @@ import {
   setDoc,
   addDoc,
   serverTimestamp,
-  deleteDoc
+  deleteDoc,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 import { firebaseConfig } from "./firebase-config.js";
@@ -40,44 +41,65 @@ const $ = id => document.getElementById(id);
 ========================= */
 
 function isHttpUrl(value) {
+
   try {
-    const url = new URL(String(value || "").trim());
+
+    const url =
+      new URL(
+        String(value || "").trim()
+      );
+
     return url.protocol === "https:";
+
   } catch {
+
     return false;
+
   }
+
 }
 
 
 function toast(message) {
+
   const el = $("toast");
 
   if (!el) {
+
     alert(message);
     return;
+
   }
 
-  el.textContent = String(message || "");
+  el.textContent =
+    String(message || "");
+
   el.classList.add("show");
 
   setTimeout(() => {
+
     el.classList.remove("show");
+
   }, 2500);
+
 }
 
 
 function esc(value) {
+
   return String(value ?? "")
     .replace(
       /[&<>"']/g,
-      m => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-      }[m])
+      m =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+        }[m])
     );
+
 }
 
 
@@ -86,16 +108,23 @@ function esc(value) {
 ========================= */
 
 async function isAdmin(uid) {
+
   if (!uid) return false;
 
-  const snap = await getDoc(
-    doc(db, "users", uid)
-  );
+  const snap =
+    await getDoc(
+      doc(
+        db,
+        "users",
+        uid
+      )
+    );
 
   return (
     snap.exists() &&
     snap.data()?.role === "admin"
   );
+
 }
 
 
@@ -103,64 +132,74 @@ async function isAdmin(uid) {
    AUTH
 ========================= */
 
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(
+  auth,
+  async user => {
 
-  try {
+    try {
 
-    if (!user) {
+      if (!user) {
 
-      if ($("dashboard")) {
-        $("dashboard").hidden = true;
+        if ($("dashboard")) {
+          $("dashboard").hidden = true;
+        }
+
+        if ($("adminLoginCard")) {
+          $("adminLoginCard").hidden = false;
+        }
+
+        return;
+
       }
+
+
+      const admin =
+        await isAdmin(
+          user.uid
+        );
+
+
+      if (!admin) {
+
+        toast(
+          "Not authorized as admin."
+        );
+
+        await signOut(auth);
+
+        return;
+
+      }
+
 
       if ($("adminLoginCard")) {
-        $("adminLoginCard").hidden = false;
+        $("adminLoginCard").hidden = true;
       }
 
-      return;
+      if ($("dashboard")) {
+        $("dashboard").hidden = false;
+      }
+
+
+      await load();
+
+
+    } catch (error) {
+
+      console.error(
+        "Admin authentication error:",
+        error
+      );
+
+      toast(
+        error?.message ||
+        "Unable to verify admin account."
+      );
+
     }
-
-
-    const admin = await isAdmin(user.uid);
-
-
-    if (!admin) {
-
-      toast("Not authorized as admin.");
-
-      await signOut(auth);
-
-      return;
-    }
-
-
-    if ($("adminLoginCard")) {
-      $("adminLoginCard").hidden = true;
-    }
-
-    if ($("dashboard")) {
-      $("dashboard").hidden = false;
-    }
-
-
-    await load();
-
-
-  } catch (error) {
-
-    console.error(
-      "Admin authentication error:",
-      error
-    );
-
-    toast(
-      error?.message ||
-      "Unable to verify admin account."
-    );
 
   }
-
-});
+);
 
 
 /* =========================
@@ -169,33 +208,34 @@ onAuthStateChanged(auth, async user => {
 
 if ($("adminLoginForm")) {
 
-  $("adminLoginForm").onsubmit = async e => {
+  $("adminLoginForm").onsubmit =
+    async e => {
 
-    e.preventDefault();
+      e.preventDefault();
 
-    try {
+      try {
 
-      await signInWithEmailAndPassword(
-        auth,
-        $("adminEmail").value.trim(),
-        $("adminPassword").value
-      );
+        await signInWithEmailAndPassword(
+          auth,
+          $("adminEmail").value.trim(),
+          $("adminPassword").value
+        );
 
-    } catch (error) {
+      } catch (error) {
 
-      console.error(
-        "Admin login error:",
-        error
-      );
+        console.error(
+          "Admin login error:",
+          error
+        );
 
-      toast(
-        error?.message ||
-        "Login failed."
-      );
+        toast(
+          error?.message ||
+          "Login failed."
+        );
 
-    }
+      }
 
-  };
+    };
 
 }
 
@@ -206,20 +246,25 @@ if ($("adminLoginForm")) {
 
 if ($("adminLogout")) {
 
-  $("adminLogout").onclick = async () => {
+  $("adminLogout").onclick =
+    async () => {
 
-    try {
+      try {
 
-      await signOut(auth);
+        await signOut(auth);
 
-    } catch (error) {
+      } catch (error) {
 
-      console.error(error);
-      toast(error.message);
+        console.error(error);
 
-    }
+        toast(
+          error?.message ||
+          "Logout failed."
+        );
 
-  };
+      }
+
+    };
 
 }
 
@@ -245,7 +290,9 @@ async function load() {
       );
 
     const settingsSnap =
-      await getDoc(settingsRef);
+      await getDoc(
+        settingsRef
+      );
 
     const data =
       settingsSnap.exists()
@@ -254,18 +301,26 @@ async function load() {
 
 
     if ($("logoUrl")) {
+
       $("logoUrl").value =
         data.logoUrl || "";
+
     }
+
 
     if ($("splashUrl")) {
+
       $("splashUrl").value =
         data.splashUrl || "";
+
     }
 
+
     if ($("qrUrl")) {
+
       $("qrUrl").value =
         data.qrUrl || "";
+
     }
 
 
@@ -276,14 +331,12 @@ async function load() {
       error
     );
 
-    /*
-      Settings read fail hone par
-      dashboard ko blank nahi karna.
-    */
-
     toast(
       "Unable to load settings: " +
-      (error?.message || "Unknown error")
+      (
+        error?.message ||
+        "Unknown error"
+      )
     );
 
   }
@@ -303,9 +356,11 @@ async function load() {
         try {
 
           if (!auth.currentUser) {
+
             throw new Error(
               "Admin session expired. Please login again."
             );
+
           }
 
 
@@ -408,8 +463,10 @@ async function load() {
 
           toast(
             "Save failed: " +
-            (error?.message ||
-              "Unknown error")
+            (
+              error?.message ||
+              "Unknown error"
+            )
           );
 
         }
@@ -433,10 +490,13 @@ async function load() {
 
       if ($("tFee")) {
 
-        $("tFee").disabled = free;
+        $("tFee").disabled =
+          free;
 
         if (free) {
+
           $("tFee").value = 0;
+
         }
 
       }
@@ -475,7 +535,10 @@ async function load() {
   ========================= */
 
   loadTournaments();
+
   loadPlayers();
+
+  loadDeposits();
 
 }
 
@@ -588,7 +651,10 @@ async function createTournament(e) {
       );
 
     if (prize1 > 0) {
-      prizes["1st"] = prize1;
+
+      prizes["1st"] =
+        prize1;
+
     }
 
 
@@ -598,7 +664,10 @@ async function createTournament(e) {
       );
 
     if (prize2 > 0) {
-      prizes["2nd"] = prize2;
+
+      prizes["2nd"] =
+        prize2;
+
     }
 
 
@@ -608,13 +677,20 @@ async function createTournament(e) {
       );
 
     if (prize3 > 0) {
-      prizes["3rd"] = prize3;
+
+      prizes["3rd"] =
+        prize3;
+
     }
 
 
     /* EXTRA PRIZES */
 
-    for (let i = 1; i <= 5; i++) {
+    for (
+      let i = 1;
+      i <= 5;
+      i++
+    ) {
 
       const rangeInput =
         $(`prizeRange${i}`);
@@ -627,7 +703,9 @@ async function createTournament(e) {
         !rangeInput ||
         !amountInput
       ) {
+
         continue;
+
       }
 
 
@@ -645,7 +723,8 @@ async function createTournament(e) {
         amount > 0
       ) {
 
-        prizes[range] = amount;
+        prizes[range] =
+          amount;
 
       }
 
@@ -656,13 +735,18 @@ async function createTournament(e) {
 
     let prizeTotal = 0;
 
+
     Object.values(prizes)
-      .forEach(value => {
+      .forEach(
+        value => {
 
-        prizeTotal +=
-          Number(value || 0);
+          prizeTotal +=
+            Number(
+              value || 0
+            );
 
-      });
+        }
+      );
 
 
     /* =========================
@@ -680,7 +764,9 @@ async function createTournament(e) {
       isFree,
 
       entryFee:
-        isFree ? 0 : entryFee,
+        isFree
+          ? 0
+          : entryFee,
 
       totalSlots,
 
@@ -732,9 +818,11 @@ async function createTournament(e) {
 
     $("tournamentForm").reset();
 
-    $("tFree").value = "false";
+    $("tFree").value =
+      "false";
 
-    $("tFee").disabled = false;
+    $("tFee").disabled =
+      false;
 
 
     $("prize1").value = 0;
@@ -742,14 +830,24 @@ async function createTournament(e) {
     $("prize3").value = 0;
 
 
-    for (let i = 1; i <= 5; i++) {
+    for (
+      let i = 1;
+      i <= 5;
+      i++
+    ) {
 
       if ($(`prizeRange${i}`)) {
-        $(`prizeRange${i}`).value = "";
+
+        $(`prizeRange${i}`).value =
+          "";
+
       }
 
       if ($(`prizeAmount${i}`)) {
-        $(`prizeAmount${i}`).value = 0;
+
+        $(`prizeAmount${i}`).value =
+          0;
+
       }
 
     }
@@ -814,6 +912,7 @@ async function roomUpdate(e) {
         tournamentId
       ),
       {
+
         tournamentId,
 
         roomId,
@@ -825,6 +924,7 @@ async function roomUpdate(e) {
 
         updatedBy:
           auth.currentUser.uid
+
       },
       {
         merge: true
@@ -884,56 +984,67 @@ function loadTournaments() {
       snapshot => {
 
         if (!$("adminTournaments")) {
+
           return;
+
         }
 
 
         $("adminTournaments").innerHTML =
 
           snapshot.docs
-            .map(d => {
+            .map(
+              d => {
 
-              const x =
-                d.data();
+                const x =
+                  d.data();
 
 
-              return `
-                <div class="listrow">
+                return `
 
-                  <b>${esc(x.name)}</b>
+                  <div class="listrow">
 
-                  · ${esc(x.mode || "")}
+                    <b>
+                      ${esc(x.name)}
+                    </b>
 
-                  · Entry ₹${Number(
-                    x.entryFee || 0
-                  )}
+                    · ${esc(
+                      x.mode || ""
+                    )}
 
-                  · Per Kill ₹${Number(
-                    x.perKill || 0
-                  )}
+                    · Entry ₹${Number(
+                      x.entryFee || 0
+                    )}
 
-                  · Slots ${Number(
-                    x.joinedCount || 0
-                  )}/${Number(
-                    x.totalSlots || 0
-                  )}
+                    · Per Kill ₹${Number(
+                      x.perKill || 0
+                    )}
 
-                  <br>
+                    · Slots ${Number(
+                      x.joinedCount || 0
+                    )}/${Number(
+                      x.totalSlots || 0
+                    )}
 
-                  <small>
-                    ${esc(d.id)}
-                  </small>
+                    <br>
 
-                  <button
-                    class="btn danger"
-                    data-del="${esc(d.id)}">
-                    Delete
-                  </button>
+                    <small>
+                      ${esc(d.id)}
+                    </small>
 
-                </div>
-              `;
+                    <button
+                      class="btn danger"
+                      data-del="${esc(d.id)}"
+                    >
+                      Delete
+                    </button>
 
-            })
+                  </div>
+
+                `;
+
+              }
+            )
             .join("")
 
           ||
@@ -945,53 +1056,57 @@ function loadTournaments() {
           .querySelectorAll(
             "[data-del]"
           )
-          .forEach(button => {
+          .forEach(
+            button => {
 
-            button.onclick =
-              async () => {
+              button.onclick =
+                async () => {
 
-                if (
-                  !confirm(
-                    "Delete this tournament?"
-                  )
-                ) {
-                  return;
-                }
-
-
-                try {
-
-                  await deleteDoc(
-                    doc(
-                      db,
-                      "tournaments",
-                      button.dataset.del
+                  if (
+                    !confirm(
+                      "Delete this tournament?"
                     )
-                  );
+                  ) {
+
+                    return;
+
+                  }
 
 
-                  toast(
-                    "Tournament deleted."
-                  );
+                  try {
+
+                    await deleteDoc(
+                      doc(
+                        db,
+                        "tournaments",
+                        button.dataset.del
+                      )
+                    );
 
 
-                } catch (error) {
+                    toast(
+                      "Tournament deleted."
+                    );
 
-                  console.error(
-                    "Delete tournament error:",
-                    error
-                  );
 
-                  toast(
-                    error?.message ||
-                    "Unable to delete tournament."
-                  );
+                  } catch (error) {
 
-                }
+                    console.error(
+                      "Delete tournament error:",
+                      error
+                    );
 
-              };
+                    toast(
+                      error?.message ||
+                      "Unable to delete tournament."
+                    );
 
-          });
+                  }
+
+                };
+
+            }
+          );
 
       },
 
@@ -1002,6 +1117,7 @@ function loadTournaments() {
           "Tournament listener error:",
           error
         );
+
 
         if ($("adminTournaments")) {
 
@@ -1055,52 +1171,60 @@ function loadPlayers() {
       snapshot => {
 
         if (!$("players")) {
+
           return;
+
         }
 
 
         $("players").innerHTML =
 
           snapshot.docs
-            .map(d => {
+            .map(
+              d => {
 
-              const x =
-                d.data();
+                const x =
+                  d.data();
 
 
-              return `
-                <div class="listrow">
+                return `
 
-                  <b>${esc(
-                    x.tournamentName
-                  )}</b>
+                  <div class="listrow">
 
-                  <br>
+                    <b>
+                      ${esc(
+                        x.tournamentName
+                      )}
+                    </b>
 
-                  ${esc(
-                    x.characterName
-                  )}
+                    <br>
 
-                  · BGMI ${esc(
-                    x.bgmiId
-                  )}
+                    ${esc(
+                      x.characterName
+                    )}
 
-                  · WhatsApp ${esc(
-                    x.whatsapp
-                  )}
+                    · BGMI ${esc(
+                      x.bgmiId
+                    )}
 
-                  · UPI ${esc(
-                    x.upiId
-                  )}
+                    · WhatsApp ${esc(
+                      x.whatsapp
+                    )}
 
-                  · ₹${Number(
-                    x.entryFee || 0
-                  )}
+                    · UPI ${esc(
+                      x.upiId
+                    )}
 
-                </div>
-              `;
+                    · ₹${Number(
+                      x.entryFee || 0
+                    )}
 
-            })
+                  </div>
+
+                `;
+
+              }
+            )
             .join("")
 
           ||
@@ -1116,6 +1240,7 @@ function loadPlayers() {
           "Players listener error:",
           error
         );
+
 
         if ($("players")) {
 
@@ -1140,3 +1265,909 @@ function loadPlayers() {
   }
 
 }
+
+
+/* =========================================================
+   DEPOSIT REQUESTS
+========================================================= */
+
+
+/* =========================
+   LOAD DEPOSIT REQUESTS
+========================= */
+
+function loadDeposits() {
+
+  try {
+
+    const depositsEl =
+      $("deposits");
+
+
+    if (!depositsEl) {
+
+      console.warn(
+        "Deposit container #deposits not found."
+      );
+
+      return;
+
+    }
+
+
+    const q =
+      query(
+        collection(
+          db,
+          "depositRequests"
+        ),
+        orderBy(
+          "createdAt",
+          "desc"
+        )
+      );
+
+
+    onSnapshot(
+      q,
+
+      snapshot => {
+
+        if (!snapshot.docs.length) {
+
+          depositsEl.innerHTML = `
+            <div class="empty">
+              No deposit requests found.
+            </div>
+          `;
+
+          return;
+
+        }
+
+
+        depositsEl.innerHTML =
+          snapshot.docs
+            .map(
+              d => {
+
+                const x =
+                  d.data();
+
+
+                const status =
+                  String(
+                    x.status || "pending"
+                  ).toLowerCase();
+
+
+                let statusClass =
+                  "warning";
+
+
+                if (
+                  status ===
+                  "approved"
+                ) {
+
+                  statusClass =
+                    "success";
+
+                }
+                else if (
+                  status ===
+                  "rejected"
+                ) {
+
+                  statusClass =
+                    "danger";
+
+                }
+
+
+                return `
+
+                  <div
+                    class="listrow"
+                    style="
+                      margin-bottom:12px;
+                      padding:14px;
+                      border:1px solid #ddd;
+                      border-radius:12px;
+                    "
+                  >
+
+                    <div>
+
+                      <b>
+                        Deposit ₹${Number(
+                          x.amount || 0
+                        )}
+                      </b>
+
+                      <span
+                        class="status ${statusClass}"
+                        style="
+                          margin-left:8px;
+                        "
+                      >
+                        ${esc(
+                          status.toUpperCase()
+                        )}
+                      </span>
+
+                    </div>
+
+
+                    <div
+                      style="
+                        margin-top:8px;
+                        line-height:1.7;
+                      "
+                    >
+
+                      <div>
+                        👤 UID:
+                        <small>
+                          ${esc(
+                            x.uid
+                          )}
+                        </small>
+                      </div>
+
+                      <div>
+                        📱 Mobile:
+                        ${esc(
+                          x.mobile
+                        )}
+                      </div>
+
+                      <div>
+                        📧 Email:
+                        ${esc(
+                          x.email
+                        )}
+                      </div>
+
+                      <div>
+                        🧾 UTR:
+                        <strong>
+                          ${esc(
+                            x.utr
+                          )}
+                        </strong>
+                      </div>
+
+                      ${
+                        x.rejectReason
+                          ? `
+                            <div>
+                              ❌ Reject Reason:
+                              ${esc(
+                                x.rejectReason
+                              )}
+                            </div>
+                          `
+                          : ""
+                      }
+
+                    </div>
+
+
+                    ${
+                      status === "pending"
+                        ? `
+
+                          <div
+                            style="
+                              display:flex;
+                              gap:8px;
+                              flex-wrap:wrap;
+                              margin-top:12px;
+                            "
+                          >
+
+                            <button
+                              class="btn success"
+                              data-approve-deposit="${esc(
+                                d.id
+                              )}"
+                            >
+                              ✓ Approve
+                            </button>
+
+                            <button
+                              class="btn danger"
+                              data-reject-deposit="${esc(
+                                d.id
+                              )}"
+                            >
+                              ✕ Reject
+                            </button>
+
+                          </div>
+
+                        `
+                        : ""
+                    }
+
+                  </div>
+
+                `;
+
+              }
+            )
+            .join("");
+
+
+        /* =========================
+           APPROVE BUTTONS
+        ========================= */
+
+        depositsEl
+          .querySelectorAll(
+            "[data-approve-deposit]"
+          )
+          .forEach(
+            button => {
+
+              button.onclick =
+                async () => {
+
+                  const requestId =
+                    button.dataset
+                      .approveDeposit;
+
+
+                  if (!requestId) {
+                    return;
+                  }
+
+
+                  if (
+                    !confirm(
+                      "Approve this deposit and add money to player's wallet?"
+                    )
+                  ) {
+
+                    return;
+
+                  }
+
+
+                  button.disabled =
+                    true;
+
+                  button.textContent =
+                    "Approving...";
+
+
+                  try {
+
+                    await approveDeposit(
+                      requestId
+                    );
+
+
+                    toast(
+                      "Deposit approved and wallet credited."
+                    );
+
+
+                  } catch (error) {
+
+                    console.error(
+                      "Approve deposit error:",
+                      error
+                    );
+
+                    toast(
+                      error?.message ||
+                      "Unable to approve deposit."
+                    );
+
+
+                    button.disabled =
+                      false;
+
+                    button.textContent =
+                      "✓ Approve";
+
+                  }
+
+                };
+
+            }
+          );
+
+
+        /* =========================
+           REJECT BUTTONS
+        ========================= */
+
+        depositsEl
+          .querySelectorAll(
+            "[data-reject-deposit]"
+          )
+          .forEach(
+            button => {
+
+              button.onclick =
+                async () => {
+
+                  const requestId =
+                    button.dataset
+                      .rejectDeposit;
+
+
+                  if (!requestId) {
+                    return;
+                  }
+
+
+                  const reason =
+                    prompt(
+                      "Enter rejection reason:"
+                    );
+
+
+                  if (
+                    reason === null
+                  ) {
+
+                    return;
+
+                  }
+
+
+                  const cleanReason =
+                    reason.trim();
+
+
+                  if (
+                    !cleanReason
+                  ) {
+
+                    toast(
+                      "Rejection reason is required."
+                    );
+
+                    return;
+
+                  }
+
+
+                  button.disabled =
+                    true;
+
+                  button.textContent =
+                    "Rejecting...";
+
+
+                  try {
+
+                    await rejectDeposit(
+                      requestId,
+                      cleanReason
+                    );
+
+
+                    toast(
+                      "Deposit rejected."
+                    );
+
+
+                  } catch (error) {
+
+                    console.error(
+                      "Reject deposit error:",
+                      error
+                    );
+
+                    toast(
+                      error?.message ||
+                      "Unable to reject deposit."
+                    );
+
+
+                    button.disabled =
+                      false;
+
+                    button.textContent =
+                      "✕ Reject";
+
+                  }
+
+                };
+
+            }
+          );
+
+      },
+
+
+      error => {
+
+        console.error(
+          "Deposit listener error:",
+          error
+        );
+
+
+        if ($("deposits")) {
+
+          $("deposits").innerHTML = `
+            <p class="muted">
+              Unable to load deposit requests.
+            </p>
+          `;
+
+        }
+
+      }
+
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Deposit query error:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================
+   APPROVE DEPOSIT
+========================= */
+
+async function approveDeposit(
+  requestId
+) {
+
+  if (!requestId) {
+
+    throw new Error(
+      "Deposit request ID is missing."
+    );
+
+  }
+
+
+  if (!auth.currentUser) {
+
+    throw new Error(
+      "Admin session expired. Please login again."
+    );
+
+  }
+
+
+  const adminUid =
+    auth.currentUser.uid;
+
+
+  const adminCheck =
+    await isAdmin(
+      adminUid
+    );
+
+
+  if (!adminCheck) {
+
+    throw new Error(
+      "Admin verification failed."
+    );
+
+  }
+
+
+  const depositRef =
+    doc(
+      db,
+      "depositRequests",
+      requestId
+    );
+
+
+  await runTransaction(
+    db,
+    async transaction => {
+
+      /* =========================
+         READ DEPOSIT
+      ========================= */
+
+      const depositSnap =
+        await transaction.get(
+          depositRef
+        );
+
+
+      if (
+        !depositSnap.exists()
+      ) {
+
+        throw new Error(
+          "Deposit request not found."
+        );
+
+      }
+
+
+      const deposit =
+        depositSnap.data() || {};
+
+
+      /*
+       * IMPORTANT:
+       * Only pending requests can be approved.
+       *
+       * This prevents double wallet credit.
+       */
+
+      if (
+        deposit.status !==
+        "pending"
+      ) {
+
+        throw new Error(
+          `This deposit is already ${deposit.status || "processed"}.`
+        );
+
+      }
+
+
+      const uid =
+        String(
+          deposit.uid || ""
+        ).trim();
+
+
+      if (!uid) {
+
+        throw new Error(
+          "Deposit request has no user ID."
+        );
+
+      }
+
+
+      const amount =
+        Number(
+          deposit.amount || 0
+        );
+
+
+      if (
+        !Number.isFinite(amount) ||
+        amount <= 0
+      ) {
+
+        throw new Error(
+          "Invalid deposit amount."
+        );
+
+      }
+
+
+      /* =========================
+         READ USER
+      ========================= */
+
+      const userRef =
+        doc(
+          db,
+          "users",
+          uid
+        );
+
+
+      const userSnap =
+        await transaction.get(
+          userRef
+        );
+
+
+      if (
+        !userSnap.exists()
+      ) {
+
+        throw new Error(
+          "Player account not found."
+        );
+
+      }
+
+
+      const userData =
+        userSnap.data() || {};
+
+
+      const oldBalance =
+        Number(
+          userData.walletBalance || 0
+        );
+
+
+      if (
+        !Number.isFinite(
+          oldBalance
+        ) ||
+        oldBalance < 0
+      ) {
+
+        throw new Error(
+          "Invalid player wallet balance."
+        );
+
+      }
+
+
+      const newBalance =
+        oldBalance +
+        amount;
+
+
+      /* =========================
+         WALLET TRANSACTION
+      ========================= */
+
+      const walletTransactionRef =
+        doc(
+          collection(
+            db,
+            "walletTransactions"
+          )
+        );
+
+
+      /*
+       * IMPORTANT:
+       * All writes happen inside
+       * the same Firestore transaction.
+       */
+
+      transaction.update(
+        userRef,
+        {
+          walletBalance:
+            newBalance
+        }
+      );
+
+
+      transaction.update(
+        depositRef,
+        {
+          status:
+            "approved",
+
+          approvedAt:
+            serverTimestamp(),
+
+          approvedBy:
+            adminUid,
+
+          updatedAt:
+            serverTimestamp()
+        }
+      );
+
+
+      transaction.set(
+        walletTransactionRef,
+        {
+
+          uid,
+
+          type:
+            "deposit",
+
+          amount,
+
+          balanceBefore:
+            oldBalance,
+
+          balanceAfter:
+            newBalance,
+
+          status:
+            "approved",
+
+          depositRequestId:
+            requestId,
+
+          utr:
+            String(
+              deposit.utr || ""
+            ),
+
+          description:
+            "Wallet deposit approved",
+
+          createdAt:
+            serverTimestamp(),
+
+          createdBy:
+            adminUid
+
+        }
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================
+   REJECT DEPOSIT
+========================= */
+
+async function rejectDeposit(
+  requestId,
+  reason
+) {
+
+  if (!requestId) {
+
+    throw new Error(
+      "Deposit request ID is missing."
+    );
+
+  }
+
+
+  if (!auth.currentUser) {
+
+    throw new Error(
+      "Admin session expired. Please login again."
+    );
+
+  }
+
+
+  const adminUid =
+    auth.currentUser.uid;
+
+
+  const adminCheck =
+    await isAdmin(
+      adminUid
+    );
+
+
+  if (!adminCheck) {
+
+    throw new Error(
+      "Admin verification failed."
+    );
+
+  }
+
+
+  const cleanReason =
+    String(
+      reason || ""
+    ).trim();
+
+
+  if (!cleanReason) {
+
+    throw new Error(
+      "Rejection reason is required."
+    );
+
+  }
+
+
+  const depositRef =
+    doc(
+      db,
+      "depositRequests",
+      requestId
+    );
+
+
+  await runTransaction(
+    db,
+    async transaction => {
+
+      const depositSnap =
+        await transaction.get(
+          depositRef
+        );
+
+
+      if (
+        !depositSnap.exists()
+      ) {
+
+        throw new Error(
+          "Deposit request not found."
+        );
+
+      }
+
+
+      const deposit =
+        depositSnap.data() || {};
+
+
+      /*
+       * Only pending requests can be rejected.
+       */
+
+      if (
+        deposit.status !==
+        "pending"
+      ) {
+
+        throw new Error(
+          `This deposit is already ${deposit.status || "processed"}.`
+        );
+
+      }
+
+
+      transaction.update(
+        depositRef,
+        {
+
+          status:
+            "rejected",
+
+          rejectReason:
+            cleanReason,
+
+          rejectedAt:
+            serverTimestamp(),
+
+          rejectedBy:
+            adminUid,
+
+          updatedAt:
+            serverTimestamp()
+
+        }
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================
+   GLOBAL ERROR HANDLER
+========================= */
+
+window.addEventListener(
+  "error",
+  event => {
+
+    console.error(
+      "Admin global error:",
+      event.error ||
+      event.message
+    );
+
+  }
+);
+
+
+window.addEventListener(
+  "unhandledrejection",
+  event => {
+
+    console.error(
+      "Admin unhandled rejection:",
+      event.reason
+    );
+
+  }
+);
