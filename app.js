@@ -211,6 +211,7 @@ function timestampMs(value) {
     return 0;
 
   }
+
 }
 
 
@@ -2773,11 +2774,25 @@ async function renderProfile() {
 
 /* =========================================================
    ADD MONEY
+   FIRESTORE BASED
 ========================================================= */
 
 async function addMoney() {
 
   try {
+
+    if (!currentUser) {
+
+      throw new Error(
+        "Please login first."
+      );
+
+    }
+
+
+    /* ---------------------------------------------
+       LOAD PAYMENT SETTINGS
+    --------------------------------------------- */
 
     const settings =
       await getDoc(
@@ -2793,6 +2808,10 @@ async function addMoney() {
       settings.data()?.qrUrl ||
       "";
 
+
+    /* ---------------------------------------------
+       PAYMENT MODAL
+    --------------------------------------------- */
 
     openModal(`
 
@@ -2814,9 +2833,25 @@ async function addMoney() {
                 max-width:260px;
                 width:100%;
                 display:block;
-                margin:auto;
+                margin:10px auto 15px;
+                border-radius:10px;
+              "
+              onerror="
+                this.style.display='none';
+                document.getElementById('qrError').style.display='block';
               "
             >
+
+            <p
+              id="qrError"
+              class="muted"
+              style="
+                display:none;
+                text-align:center;
+              "
+            >
+              Payment QR image could not be loaded.
+            </p>
 
           `
 
@@ -2830,6 +2865,18 @@ async function addMoney() {
       }
 
 
+      <p
+        class="muted"
+        style="
+          text-align:center;
+          margin-bottom:15px;
+        "
+      >
+        QR scan karke payment karein,
+        phir UTR / Transaction ID submit karein.
+      </p>
+
+
       <form
         id="deposit"
         class="formgrid"
@@ -2840,6 +2887,7 @@ async function addMoney() {
           type="number"
           min="1"
           max="50000"
+          step="1"
           placeholder="Amount"
           required
         >
@@ -2847,13 +2895,17 @@ async function addMoney() {
 
         <input
           id="dutr"
-          placeholder="UTR"
+          type="text"
+          maxlength="100"
+          placeholder="UTR / Transaction ID"
           required
         >
 
 
         <input
           id="dmob"
+          type="tel"
+          maxlength="15"
           placeholder="Mobile number"
           required
         >
@@ -2872,10 +2924,11 @@ async function addMoney() {
 
 
         <button
+          id="depositSubmit"
           type="submit"
           class="btn primary"
         >
-          Submit
+          Submit Payment
         </button>
 
       </form>
@@ -2883,10 +2936,28 @@ async function addMoney() {
     `);
 
 
-    $("deposit").onsubmit =
+    const depositForm =
+      $("deposit");
+
+
+    if (!depositForm) {
+      return;
+    }
+
+
+    /* ---------------------------------------------
+       SUBMIT DEPOSIT
+    --------------------------------------------- */
+
+    depositForm.onsubmit =
       async event => {
 
         event.preventDefault();
+
+
+        const submitButton =
+          $("depositSubmit");
+
 
         try {
 
@@ -2899,105 +2970,175 @@ async function addMoney() {
           }
 
 
-          const token =
-            await currentUser
-              .getIdToken();
+          /* ---------------------------------------
+             GET FORM VALUES
+          --------------------------------------- */
 
-
-          const response =
-            await fetch(
-              "/api/submitDeposit",
-              {
-                method: "POST",
-
-                headers: {
-                  "Content-Type":
-                    "application/json",
-
-                  "Authorization":
-                    "Bearer " +
-                    token
-                },
-
-                body:
-                  JSON.stringify({
-
-                    amount:
-                      Number(
-                        $("damt")
-                          .value
-                      ),
-
-                    utr:
-                      $("dutr")
-                        .value
-                        .trim(),
-
-                    mobile:
-                      $("dmob")
-                        .value
-                        .trim(),
-
-                    email:
-                      $("demail")
-                        .value
-                        .trim()
-
-                  })
-
-              }
+          const amount =
+            Number(
+              $("damt")
+                ?.value
+                ?.trim()
             );
 
 
-          let result;
+          const utr =
+            $("dutr")
+              ?.value
+              ?.trim();
 
-          try {
-            result =
-              await response.json();
-          } catch {
-            result = {
-              success: false,
-              message:
-                "Server returned invalid response."
-            };
+
+          const mobile =
+            $("dmob")
+              ?.value
+              ?.trim();
+
+
+          const email =
+            $("demail")
+              ?.value
+              ?.trim();
+
+
+          /* ---------------------------------------
+             VALIDATION
+          --------------------------------------- */
+
+          if (
+            !Number.isFinite(amount) ||
+            amount < 1 ||
+            amount > 50000
+          ) {
+
+            throw new Error(
+              "Amount ₹1 se ₹50,000 ke beech hona chahiye."
+            );
+
           }
 
 
           if (
-            !response.ok ||
-            !result.success
+            !utr ||
+            utr.length < 4
           ) {
 
             throw new Error(
-              result.message ||
-              "Unable to submit deposit."
+              "Valid UTR / Transaction ID enter karein."
             );
 
           }
 
 
-          toast(
-            result.message ||
-            "Deposit submitted."
+          if (
+            !mobile ||
+            mobile.length < 10
+          ) {
+
+            throw new Error(
+              "Valid mobile number enter karein."
+            );
+
+          }
+
+
+          if (!email) {
+
+            throw new Error(
+              "Email ID enter karein."
+            );
+
+          }
+
+
+          /* ---------------------------------------
+             DISABLE BUTTON
+          --------------------------------------- */
+
+          if (submitButton) {
+
+            submitButton.disabled = true;
+
+            submitButton.textContent =
+              "Submitting...";
+
+          }
+
+
+          /* ---------------------------------------
+             CREATE DEPOSIT REQUEST
+          --------------------------------------- */
+
+          await addDoc(
+            collection(
+              db,
+              "depositRequests"
+            ),
+            {
+
+              uid:
+                currentUser.uid,
+
+              amount:
+                amount,
+
+              utr:
+                utr,
+
+              mobile:
+                mobile,
+
+              email:
+                email,
+
+              status:
+                "pending",
+
+              createdAt:
+                serverTimestamp()
+
+            }
           );
 
+
+          /* ---------------------------------------
+             SUCCESS
+          --------------------------------------- */
+
+          toast(
+            "Payment request submitted successfully. Admin verification ke baad wallet balance update hoga."
+          );
+
+
           closeModal();
+
 
         } catch (error) {
 
           console.error(
-            "Deposit error:",
+            "❌ Deposit error:",
             error
           );
+
 
           toast(
             error.message ||
             "Unable to submit deposit."
           );
 
+
+          if (submitButton) {
+
+            submitButton.disabled = false;
+
+            submitButton.textContent =
+              "Submit Payment";
+
+          }
+
         }
 
       };
+
 
   } catch (error) {
 
@@ -3006,12 +3147,10 @@ async function addMoney() {
       error
     );
 
+
     toast(
-      "Payment settings error: " +
-      (
-        error.message ||
-        "Unknown error"
-      )
+      error.message ||
+      "Payment settings error."
     );
 
   }
