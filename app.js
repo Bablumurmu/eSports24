@@ -2764,13 +2764,15 @@ async function addMoney() {
 
   } catch (e) {
 
-    console.error(e);
+  console.error(
+    "❌ PAYMENT SETTINGS ERROR:",
+    e
+  );
 
-    toast(
-      "Unable to load payment settings."
-    );
-
-  }
+  toast(
+    "Payment settings error: " +
+    (e.message || "Unknown error")
+  );
 
 }
 
