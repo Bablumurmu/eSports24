@@ -39,10 +39,10 @@ const $ = id => document.getElementById(id);
    HELPERS
 ========================= */
 
-function isHttpUrl(v) {
+function isHttpUrl(value) {
   try {
-    const u = new URL(String(v || "").trim());
-    return u.protocol === "https:";
+    const url = new URL(String(value || "").trim());
+    return url.protocol === "https:";
   } catch {
     return false;
   }
@@ -57,7 +57,7 @@ function toast(message) {
     return;
   }
 
-  el.textContent = message;
+  el.textContent = String(message || "");
   el.classList.add("show");
 
   setTimeout(() => {
@@ -86,13 +86,15 @@ function esc(value) {
 ========================= */
 
 async function isAdmin(uid) {
+  if (!uid) return false;
+
   const snap = await getDoc(
     doc(db, "users", uid)
   );
 
   return (
     snap.exists() &&
-    snap.data().role === "admin"
+    snap.data()?.role === "admin"
   );
 }
 
@@ -103,18 +105,24 @@ async function isAdmin(uid) {
 
 onAuthStateChanged(auth, async user => {
 
-  if (!user) {
-
-    $("dashboard").hidden = true;
-    $("adminLoginCard").hidden = false;
-
-    return;
-  }
-
-
   try {
 
+    if (!user) {
+
+      if ($("dashboard")) {
+        $("dashboard").hidden = true;
+      }
+
+      if ($("adminLoginCard")) {
+        $("adminLoginCard").hidden = false;
+      }
+
+      return;
+    }
+
+
     const admin = await isAdmin(user.uid);
+
 
     if (!admin) {
 
@@ -126,15 +134,29 @@ onAuthStateChanged(auth, async user => {
     }
 
 
-    $("adminLoginCard").hidden = true;
-    $("dashboard").hidden = false;
+    if ($("adminLoginCard")) {
+      $("adminLoginCard").hidden = true;
+    }
 
-    load();
+    if ($("dashboard")) {
+      $("dashboard").hidden = false;
+    }
+
+
+    await load();
+
 
   } catch (error) {
 
-    console.error(error);
-    toast(error.message);
+    console.error(
+      "Admin authentication error:",
+      error
+    );
+
+    toast(
+      error?.message ||
+      "Unable to verify admin account."
+    );
 
   }
 
@@ -145,35 +167,61 @@ onAuthStateChanged(auth, async user => {
    LOGIN
 ========================= */
 
-$("adminLoginForm").onsubmit = async e => {
+if ($("adminLoginForm")) {
 
-  e.preventDefault();
+  $("adminLoginForm").onsubmit = async e => {
 
-  try {
+    e.preventDefault();
 
-    await signInWithEmailAndPassword(
-      auth,
-      $("adminEmail").value.trim(),
-      $("adminPassword").value
-    );
+    try {
 
-  } catch (error) {
+      await signInWithEmailAndPassword(
+        auth,
+        $("adminEmail").value.trim(),
+        $("adminPassword").value
+      );
 
-    console.error(error);
-    toast(error.message);
+    } catch (error) {
 
-  }
+      console.error(
+        "Admin login error:",
+        error
+      );
 
-};
+      toast(
+        error?.message ||
+        "Login failed."
+      );
+
+    }
+
+  };
+
+}
 
 
 /* =========================
    LOGOUT
 ========================= */
 
-$("adminLogout").onclick = () => {
-  signOut(auth);
-};
+if ($("adminLogout")) {
+
+  $("adminLogout").onclick = async () => {
+
+    try {
+
+      await signOut(auth);
+
+    } catch (error) {
+
+      console.error(error);
+      toast(error.message);
+
+    }
+
+  };
+
+}
 
 
 /* =========================
@@ -184,137 +232,242 @@ async function load() {
 
 
   /* =========================
-     SETTINGS
+     LOAD SETTINGS
   ========================= */
 
   try {
 
-    const settings = await getDoc(
-      doc(db, "adminSettings", "public")
-    );
+    const settingsRef =
+      doc(
+        db,
+        "adminSettings",
+        "public"
+      );
 
-    const data = settings.data() || {};
+    const settingsSnap =
+      await getDoc(settingsRef);
 
-    $("logoUrl").value =
-      data.logoUrl || "";
+    const data =
+      settingsSnap.exists()
+        ? settingsSnap.data()
+        : {};
 
-    $("splashUrl").value =
-      data.splashUrl || "";
 
-    $("qrUrl").value =
-      data.qrUrl || "";
+    if ($("logoUrl")) {
+      $("logoUrl").value =
+        data.logoUrl || "";
+    }
+
+    if ($("splashUrl")) {
+      $("splashUrl").value =
+        data.splashUrl || "";
+    }
+
+    if ($("qrUrl")) {
+      $("qrUrl").value =
+        data.qrUrl || "";
+    }
+
 
   } catch (error) {
 
-    console.warn(
-      "Settings unavailable:",
+    console.error(
+      "Settings load error:",
       error
+    );
+
+    /*
+      Settings read fail hone par
+      dashboard ko blank nahi karna.
+    */
+
+    toast(
+      "Unable to load settings: " +
+      (error?.message || "Unknown error")
     );
 
   }
 
 
-  $("settingsForm").onsubmit =
-    async e => {
+  /* =========================
+     SAVE SETTINGS
+  ========================= */
 
-      e.preventDefault();
+  if ($("settingsForm")) {
 
-      try {
+    $("settingsForm").onsubmit =
+      async e => {
 
-        const logo =
-          $("logoUrl").value.trim();
+        e.preventDefault();
 
-        const splash =
-          $("splashUrl").value.trim();
+        try {
 
-        const qr =
-          $("qrUrl").value.trim();
+          if (!auth.currentUser) {
+            throw new Error(
+              "Admin session expired. Please login again."
+            );
+          }
 
 
-        for (const [label, url] of [
-          ["Logo", logo],
-          ["Splash", splash],
-          ["Payment QR", qr]
-        ]) {
+          const logo =
+            $("logoUrl")?.value.trim() || "";
+
+          const splash =
+            $("splashUrl")?.value.trim() || "";
+
+          const qr =
+            $("qrUrl")?.value.trim() || "";
+
+
+          /* URL VALIDATION */
+
+          for (
+            const [label, url]
+            of [
+              ["Logo", logo],
+              ["Splash", splash],
+              ["Payment QR", qr]
+            ]
+          ) {
+
+            if (
+              url &&
+              !isHttpUrl(url)
+            ) {
+
+              throw new Error(
+                `${label} must be a valid HTTPS URL.`
+              );
+
+            }
+
+          }
+
+
+          /* VERIFY ADMIN */
+
+          const adminUid =
+            auth.currentUser.uid;
+
+          const adminSnap =
+            await getDoc(
+              doc(
+                db,
+                "users",
+                adminUid
+              )
+            );
+
 
           if (
-            url &&
-            !isHttpUrl(url)
+            !adminSnap.exists() ||
+            adminSnap.data()?.role !== "admin"
           ) {
 
             throw new Error(
-              `${label} must be a valid HTTPS URL.`
+              "Admin verification failed."
             );
 
           }
 
+
+          /* SAVE */
+
+          await setDoc(
+            doc(
+              db,
+              "adminSettings",
+              "public"
+            ),
+            {
+              logoUrl: logo,
+              splashUrl: splash,
+              qrUrl: qr,
+              updatedAt:
+                serverTimestamp(),
+              updatedBy:
+                adminUid
+            },
+            {
+              merge: true
+            }
+          );
+
+
+          toast(
+            "Settings saved successfully."
+          );
+
+
+        } catch (error) {
+
+          console.error(
+            "Settings save error:",
+            error
+          );
+
+          toast(
+            "Save failed: " +
+            (error?.message ||
+              "Unknown error")
+          );
+
         }
 
+      };
 
-        await setDoc(
-          doc(
-            db,
-            "adminSettings",
-            "public"
-          ),
-          {
-            logoUrl: logo,
-            splashUrl: splash,
-            qrUrl: qr,
-            updatedAt:
-              serverTimestamp(),
-            updatedBy:
-              auth.currentUser.uid
-          }
-        );
-
-
-        toast(
-          "Settings saved."
-        );
-
-      } catch (error) {
-
-        console.error(error);
-        toast(error.message);
-
-      }
-
-    };
+  }
 
 
   /* =========================
      FREE / PAID
   ========================= */
 
-  $("tFree").onchange = () => {
+  if ($("tFree")) {
 
-    const free =
-      $("tFree").value === "true";
+    $("tFree").onchange = () => {
 
-    $("tFee").disabled = free;
+      const free =
+        $("tFree").value === "true";
 
-    if (free) {
-      $("tFee").value = 0;
-    }
 
-  };
+      if ($("tFee")) {
+
+        $("tFee").disabled = free;
+
+        if (free) {
+          $("tFee").value = 0;
+        }
+
+      }
+
+    };
+
+  }
 
 
   /* =========================
      TOURNAMENT
   ========================= */
 
-  $("tournamentForm").onsubmit =
-    createTournament;
+  if ($("tournamentForm")) {
+
+    $("tournamentForm").onsubmit =
+      createTournament;
+
+  }
 
 
   /* =========================
      ROOM
   ========================= */
 
-  $("roomForm").onsubmit =
-    roomUpdate;
+  if ($("roomForm")) {
+
+    $("roomForm").onsubmit =
+      roomUpdate;
+
+  }
 
 
   /* =========================
@@ -335,12 +488,7 @@ async function createTournament(e) {
 
   e.preventDefault();
 
-
   try {
-
-    /* =========================
-       BASIC DETAILS
-    ========================= */
 
     const name =
       $("tName").value.trim();
@@ -355,29 +503,17 @@ async function createTournament(e) {
       $("tFree").value === "true";
 
 
-    /* =========================
-       ENTRY FEE
-    ========================= */
-
     const entryFee =
       Number(
         $("tFee").value || 0
       );
 
 
-    /* =========================
-       TOTAL SLOTS
-    ========================= */
-
     const totalSlots =
       Number(
         $("tSlots").value || 0
       );
 
-
-    /* =========================
-       PER KILL
-    ========================= */
 
     const perKill =
       Number(
@@ -392,9 +528,7 @@ async function createTournament(e) {
       $("tDate").value;
 
 
-    /* =========================
-       VALIDATION
-    ========================= */
+    /* VALIDATION */
 
     if (!name) {
 
@@ -442,13 +576,11 @@ async function createTournament(e) {
 
 
     /* =========================
-       PRIZE DISTRIBUTION
+       PRIZES
     ========================= */
 
     const prizes = {};
 
-
-    /* 1st Prize */
 
     const prize1 =
       Number(
@@ -460,8 +592,6 @@ async function createTournament(e) {
     }
 
 
-    /* 2nd Prize */
-
     const prize2 =
       Number(
         $("prize2").value || 0
@@ -471,8 +601,6 @@ async function createTournament(e) {
       prizes["2nd"] = prize2;
     }
 
-
-    /* 3rd Prize */
 
     const prize3 =
       Number(
@@ -484,9 +612,7 @@ async function createTournament(e) {
     }
 
 
-    /* =========================
-       EXTRA PRIZE RANGES
-    ========================= */
+    /* EXTRA PRIZES */
 
     for (let i = 1; i <= 5; i++) {
 
@@ -514,7 +640,10 @@ async function createTournament(e) {
         );
 
 
-      if (range && amount > 0) {
+      if (
+        range &&
+        amount > 0
+      ) {
 
         prizes[range] = amount;
 
@@ -523,9 +652,7 @@ async function createTournament(e) {
     }
 
 
-    /* =========================
-       TOTAL PRIZE
-    ========================= */
+    /* TOTAL PRIZE */
 
     let prizeTotal = 0;
 
@@ -578,9 +705,7 @@ async function createTournament(e) {
     };
 
 
-    /* =========================
-       SAVE TO FIRESTORE
-    ========================= */
+    /* SAVE */
 
     const tournamentRef =
       await addDoc(
@@ -591,10 +716,6 @@ async function createTournament(e) {
         tournamentData
       );
 
-
-    /* =========================
-       SUCCESS
-    ========================= */
 
     toast(
       "Tournament created successfully."
@@ -607,9 +728,7 @@ async function createTournament(e) {
     );
 
 
-    /* =========================
-       RESET FORM
-    ========================= */
+    /* RESET */
 
     $("tournamentForm").reset();
 
@@ -617,8 +736,6 @@ async function createTournament(e) {
 
     $("tFee").disabled = false;
 
-
-    /* Reset prizes */
 
     $("prize1").value = 0;
     $("prize2").value = 0;
@@ -645,7 +762,10 @@ async function createTournament(e) {
       error
     );
 
-    toast(error.message);
+    toast(
+      error?.message ||
+      "Unable to create tournament."
+    );
 
   }
 
@@ -659,7 +779,6 @@ async function createTournament(e) {
 async function roomUpdate(e) {
 
   e.preventDefault();
-
 
   try {
 
@@ -706,6 +825,9 @@ async function roomUpdate(e) {
 
         updatedBy:
           auth.currentUser.uid
+      },
+      {
+        merge: true
       }
     );
 
@@ -720,9 +842,15 @@ async function roomUpdate(e) {
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "Room update error:",
+      error
+    );
 
-    toast(error.message);
+    toast(
+      error?.message ||
+      "Unable to update room credentials."
+    );
 
   }
 
@@ -735,135 +863,167 @@ async function roomUpdate(e) {
 
 function loadTournaments() {
 
-  const q = query(
-    collection(db, "tournaments"),
-    orderBy(
-      "createdAt",
-      "desc"
-    )
-  );
+  try {
 
-
-  onSnapshot(
-    q,
-
-    snapshot => {
-
-      $("adminTournaments").innerHTML =
-
-        snapshot.docs
-          .map(d => {
-
-            const x = d.data();
-
-
-            return `
-              <div class="listrow">
-
-                <b>${esc(x.name)}</b>
-
-                · ${esc(x.mode || "")}
-
-                · Entry ₹${Number(
-                  x.entryFee || 0
-                )}
-
-                · Per Kill ₹${Number(
-                  x.perKill || 0
-                )}
-
-                · Slots ${Number(
-                  x.joinedCount || 0
-                )}/${Number(
-                  x.totalSlots || 0
-                )}
-
-                <br>
-
-                <small>
-                  ${esc(d.id)}
-                </small>
-
-                <button
-                  class="btn danger"
-                  data-del="${esc(d.id)}">
-                  Delete
-                </button>
-
-              </div>
-            `;
-
-          })
-          .join("")
-
-        ||
-
-        "No tournaments.";
-
-
-      document
-        .querySelectorAll(
-          "[data-del]"
+    const q =
+      query(
+        collection(
+          db,
+          "tournaments"
+        ),
+        orderBy(
+          "createdAt",
+          "desc"
         )
-        .forEach(button => {
-
-          button.onclick =
-            async () => {
-
-              if (
-                !confirm(
-                  "Delete this tournament?"
-                )
-              ) {
-                return;
-              }
-
-
-              try {
-
-                await deleteDoc(
-                  doc(
-                    db,
-                    "tournaments",
-                    button.dataset.del
-                  )
-                );
-
-
-                toast(
-                  "Tournament deleted."
-                );
-
-
-              } catch (error) {
-
-                console.error(error);
-
-                toast(
-                  error.message
-                );
-
-              }
-
-            };
-
-        });
-
-    },
-
-
-    error => {
-
-      console.error(
-        "Tournament listener:",
-        error
       );
 
-      toast(error.message);
 
-    }
+    onSnapshot(
+      q,
 
-  );
+      snapshot => {
+
+        if (!$("adminTournaments")) {
+          return;
+        }
+
+
+        $("adminTournaments").innerHTML =
+
+          snapshot.docs
+            .map(d => {
+
+              const x =
+                d.data();
+
+
+              return `
+                <div class="listrow">
+
+                  <b>${esc(x.name)}</b>
+
+                  · ${esc(x.mode || "")}
+
+                  · Entry ₹${Number(
+                    x.entryFee || 0
+                  )}
+
+                  · Per Kill ₹${Number(
+                    x.perKill || 0
+                  )}
+
+                  · Slots ${Number(
+                    x.joinedCount || 0
+                  )}/${Number(
+                    x.totalSlots || 0
+                  )}
+
+                  <br>
+
+                  <small>
+                    ${esc(d.id)}
+                  </small>
+
+                  <button
+                    class="btn danger"
+                    data-del="${esc(d.id)}">
+                    Delete
+                  </button>
+
+                </div>
+              `;
+
+            })
+            .join("")
+
+          ||
+
+          "No tournaments.";
+
+
+        document
+          .querySelectorAll(
+            "[data-del]"
+          )
+          .forEach(button => {
+
+            button.onclick =
+              async () => {
+
+                if (
+                  !confirm(
+                    "Delete this tournament?"
+                  )
+                ) {
+                  return;
+                }
+
+
+                try {
+
+                  await deleteDoc(
+                    doc(
+                      db,
+                      "tournaments",
+                      button.dataset.del
+                    )
+                  );
+
+
+                  toast(
+                    "Tournament deleted."
+                  );
+
+
+                } catch (error) {
+
+                  console.error(
+                    "Delete tournament error:",
+                    error
+                  );
+
+                  toast(
+                    error?.message ||
+                    "Unable to delete tournament."
+                  );
+
+                }
+
+              };
+
+          });
+
+      },
+
+
+      error => {
+
+        console.error(
+          "Tournament listener error:",
+          error
+        );
+
+        if ($("adminTournaments")) {
+
+          $("adminTournaments").innerHTML =
+            `<p class="muted">
+              Unable to load tournaments.
+            </p>`;
+
+        }
+
+      }
+
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Tournament query error:",
+      error
+    );
+
+  }
 
 }
 
@@ -874,82 +1034,109 @@ function loadTournaments() {
 
 function loadPlayers() {
 
-  const q = query(
-    collection(
-      db,
-      "tournamentParticipants"
-    ),
-    orderBy(
-      "joinedAt",
-      "desc"
-    )
-  );
+  try {
 
-
-  onSnapshot(
-    q,
-
-    snapshot => {
-
-      $("players").innerHTML =
-
-        snapshot.docs
-          .map(d => {
-
-            const x = d.data();
-
-
-            return `
-              <div class="listrow">
-
-                <b>${esc(
-                  x.tournamentName
-                )}</b>
-
-                <br>
-
-                ${esc(
-                  x.characterName
-                )}
-
-                · BGMI ${esc(
-                  x.bgmiId
-                )}
-
-                · WhatsApp ${esc(
-                  x.whatsapp
-                )}
-
-                · UPI ${esc(
-                  x.upiId
-                )}
-
-                · ₹${Number(
-                  x.entryFee || 0
-                )}
-
-              </div>
-            `;
-
-          })
-          .join("")
-
-        ||
-
-        "No players.";
-
-    },
-
-
-    error => {
-
-      console.error(
-        "Players listener:",
-        error
+    const q =
+      query(
+        collection(
+          db,
+          "tournamentParticipants"
+        ),
+        orderBy(
+          "joinedAt",
+          "desc"
+        )
       );
 
-    }
 
-  );
+    onSnapshot(
+      q,
+
+      snapshot => {
+
+        if (!$("players")) {
+          return;
+        }
+
+
+        $("players").innerHTML =
+
+          snapshot.docs
+            .map(d => {
+
+              const x =
+                d.data();
+
+
+              return `
+                <div class="listrow">
+
+                  <b>${esc(
+                    x.tournamentName
+                  )}</b>
+
+                  <br>
+
+                  ${esc(
+                    x.characterName
+                  )}
+
+                  · BGMI ${esc(
+                    x.bgmiId
+                  )}
+
+                  · WhatsApp ${esc(
+                    x.whatsapp
+                  )}
+
+                  · UPI ${esc(
+                    x.upiId
+                  )}
+
+                  · ₹${Number(
+                    x.entryFee || 0
+                  )}
+
+                </div>
+              `;
+
+            })
+            .join("")
+
+          ||
+
+          "No players.";
+
+      },
+
+
+      error => {
+
+        console.error(
+          "Players listener error:",
+          error
+        );
+
+        if ($("players")) {
+
+          $("players").innerHTML =
+            `<p class="muted">
+              Unable to load players.
+            </p>`;
+
+        }
+
+      }
+
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Players query error:",
+      error
+    );
+
+  }
 
 }
