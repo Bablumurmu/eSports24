@@ -1,32 +1,71 @@
 <!doctype html>
 <html lang="en">
+
 <head>
+
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
   <title>eSports24 Admin</title>
-  <link rel="stylesheet" href="style.css">
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
+
 </head>
+
 
 <body>
 
+
 <header class="topbar">
-  <a class="brand" href="index.html">eSports24 Admin</a>
-  <button id="adminLogout" class="btn small">Logout</button>
+
+  <a
+    class="brand"
+    href="index.html"
+  >
+    eSports24 Admin
+  </a>
+
+  <button
+    id="adminLogout"
+    class="btn small"
+  >
+    Logout
+  </button>
+
 </header>
+
 
 <main class="container admin">
 
-  <!-- ADMIN LOGIN -->
-  <section id="adminLoginCard" class="card">
+
+  <!-- =========================
+       ADMIN LOGIN
+  ========================= -->
+
+  <section
+    id="adminLoginCard"
+    class="card"
+  >
+
     <h1>Admin Login</h1>
 
+
     <form id="adminLoginForm">
+
       <input
         id="adminEmail"
         type="email"
         placeholder="Admin email"
         required
       >
+
 
       <input
         id="adminPassword"
@@ -35,58 +74,104 @@
         required
       >
 
-      <button class="btn primary">Login</button>
+
+      <button
+        class="btn primary"
+      >
+        Login
+      </button>
+
     </form>
+
   </section>
 
 
-  <!-- ADMIN DASHBOARD -->
-  <section id="dashboard" hidden>
+
+  <!-- =========================
+       ADMIN DASHBOARD
+  ========================= -->
+
+  <section
+    id="dashboard"
+    hidden
+  >
+
 
     <div class="grid2">
 
-      <!-- BRAND & PAYMENT -->
+
+      <!-- =========================
+           BRAND & PAYMENT
+      ========================= -->
+
       <section class="card">
 
-        <h2>Brand & Payment</h2>
+        <h2>
+          Brand & Payment
+        </h2>
 
-        <form id="settingsForm">
+
+        <form
+          id="settingsForm"
+        >
 
           <input
             id="logoUrl"
             placeholder="Logo image URL"
           >
 
+
           <input
             id="splashUrl"
             placeholder="Splash image URL"
           >
+
 
           <input
             id="qrUrl"
             placeholder="Payment QR image URL"
           >
 
-          <button class="btn primary">
+
+          <button
+            class="btn primary"
+          >
             Save settings
           </button>
 
         </form>
 
+
         <p class="muted">
-          No Firebase Storage is used. Enter direct HTTPS image URLs;
-          they are stored in Firestore at adminSettings/public.
+
+          No Firebase Storage is used.
+          Enter direct HTTPS image URLs;
+          they are stored in Firestore at
+          adminSettings/public.
+
         </p>
 
       </section>
 
 
-      <!-- CREATE TOURNAMENT -->
+
+      <!-- =========================
+           CREATE TOURNAMENT
+      ========================= -->
+
       <section class="card">
 
-        <h2>Create Tournament</h2>
+        <h2>
+          Create Tournament
+        </h2>
 
-        <form id="tournamentForm">
+
+        <form
+          id="tournamentForm"
+        >
+
+
+          <!-- TOURNAMENT NAME -->
 
           <input
             id="tName"
@@ -94,29 +179,61 @@
             required
           >
 
+
+          <!-- TOURNAMENT IMAGE -->
+
           <input
             id="tImage"
             placeholder="Tournament image URL"
             required
           >
 
+
+          <!-- MODE -->
+
           <select id="tMode">
-            <option>Solo</option>
-            <option>Duo</option>
-            <option>Squad</option>
+
+            <option>
+              Solo
+            </option>
+
+            <option>
+              Duo
+            </option>
+
+            <option>
+              Squad
+            </option>
+
           </select>
+
+
+          <!-- FREE / PAID -->
 
           <select id="tFree">
-            <option value="false">Paid</option>
-            <option value="true">Free</option>
+
+            <option value="false">
+              Paid
+            </option>
+
+            <option value="true">
+              Free
+            </option>
+
           </select>
 
 
-          <!-- ENTRY FEE -->
+
+          <!-- =========================
+               ENTRY FEE
+          ========================= -->
+
           <div class="form-box">
+
             <label for="tFee">
               Entry Fee
             </label>
+
 
             <input
               id="tFee"
@@ -126,14 +243,21 @@
               value="0"
               placeholder="₹ Entry Fee"
             >
+
           </div>
 
 
-          <!-- PER KILL -->
+
+          <!-- =========================
+               PER KILL
+          ========================= -->
+
           <div class="form-box">
+
             <label for="tKill">
               Per Kill
             </label>
+
 
             <input
               id="tKill"
@@ -143,52 +267,267 @@
               value="0"
               placeholder="₹ Per Kill"
             >
+
           </div>
 
 
-          <!-- TOTAL SLOTS -->
-          <input
-            id="tSlots"
-            type="number"
-            min="1"
-            placeholder="Total slots"
-            required
-          >
+
+          <!-- =========================
+               TOTAL SLOTS
+          ========================= -->
+
+          <div class="form-box">
+
+            <label for="tSlots">
+              Total Slots
+            </label>
 
 
-          <!-- REGISTRATION END -->
-          <label>
-            Registration ends
+            <input
+              id="tSlots"
+              type="number"
+              min="1"
+              placeholder="Total slots"
+              required
+            >
+
+          </div>
+
+
+
+          <!-- =========================
+               REGISTRATION END
+          ========================= -->
+
+          <div class="form-box">
+
+            <label for="tReg">
+              Registration ends
+            </label>
+
+
             <input
               id="tReg"
               type="datetime-local"
               required
             >
-          </label>
+
+          </div>
 
 
-          <!-- MATCH DATE -->
-          <label>
-            Match date/time
+
+          <!-- =========================
+               MATCH DATE
+          ========================= -->
+
+          <div class="form-box">
+
+            <label for="tDate">
+              Match date/time
+            </label>
+
+
             <input
               id="tDate"
               type="datetime-local"
               required
             >
-          </label>
+
+          </div>
 
 
-          <!-- PRIZES -->
-          <textarea
-            id="tPrizes"
-            rows="6"
-            placeholder='Prize JSON, e.g. {"1st":500,"2nd":300,"3rd":200}'
-          ></textarea>
+
+          <!-- =========================
+               PRIZE DISTRIBUTION
+          ========================= -->
+
+          <div class="form-box">
+
+            <label>
+              Prize Distribution
+            </label>
 
 
-          <button class="btn primary">
+            <!-- 1ST -->
+
+            <input
+              id="prize1"
+              type="number"
+              min="0"
+              step="1"
+              value="0"
+              placeholder="🥇 1st Prize ₹"
+            >
+
+
+            <!-- 2ND -->
+
+            <input
+              id="prize2"
+              type="number"
+              min="0"
+              step="1"
+              value="0"
+              placeholder="🥈 2nd Prize ₹"
+            >
+
+
+            <!-- 3RD -->
+
+            <input
+              id="prize3"
+              type="number"
+              min="0"
+              step="1"
+              value="0"
+              placeholder="🥉 3rd Prize ₹"
+            >
+
+
+
+            <!-- =========================
+                 RANGE 1
+            ========================= -->
+
+            <div class="prize-range">
+
+              <input
+                id="prizeRange1"
+                type="text"
+                placeholder="4th to 7th"
+              >
+
+
+              <input
+                id="prizeAmount1"
+                type="number"
+                min="0"
+                step="1"
+                value="0"
+                placeholder="Prize ₹"
+              >
+
+            </div>
+
+
+
+            <!-- =========================
+                 RANGE 2
+            ========================= -->
+
+            <div class="prize-range">
+
+              <input
+                id="prizeRange2"
+                type="text"
+                placeholder="8th to 10th"
+              >
+
+
+              <input
+                id="prizeAmount2"
+                type="number"
+                min="0"
+                step="1"
+                value="0"
+                placeholder="Prize ₹"
+              >
+
+            </div>
+
+
+
+            <!-- =========================
+                 RANGE 3
+            ========================= -->
+
+            <div class="prize-range">
+
+              <input
+                id="prizeRange3"
+                type="text"
+                placeholder="11th to 15th"
+              >
+
+
+              <input
+                id="prizeAmount3"
+                type="number"
+                min="0"
+                step="1"
+                value="0"
+                placeholder="Prize ₹"
+              >
+
+            </div>
+
+
+
+            <!-- =========================
+                 RANGE 4
+            ========================= -->
+
+            <div class="prize-range">
+
+              <input
+                id="prizeRange4"
+                type="text"
+                placeholder="16th to 20th"
+              >
+
+
+              <input
+                id="prizeAmount4"
+                type="number"
+                min="0"
+                step="1"
+                value="0"
+                placeholder="Prize ₹"
+              >
+
+            </div>
+
+
+
+            <!-- =========================
+                 RANGE 5
+            ========================= -->
+
+            <div class="prize-range">
+
+              <input
+                id="prizeRange5"
+                type="text"
+                placeholder="21st to 25th"
+              >
+
+
+              <input
+                id="prizeAmount5"
+                type="number"
+                min="0"
+                step="1"
+                value="0"
+                placeholder="Prize ₹"
+              >
+
+            </div>
+
+          </div>
+
+
+
+          <!-- =========================
+               CREATE
+          ========================= -->
+
+          <button
+            class="btn primary"
+            type="submit"
+          >
             Create tournament
           </button>
+
 
         </form>
 
@@ -197,26 +536,54 @@
     </div>
 
 
-    <!-- DEPOSIT REQUESTS -->
+
+    <!-- =========================
+         DEPOSIT REQUESTS
+    ========================= -->
+
     <section class="card">
-      <h2>Deposit Requests</h2>
+
+      <h2>
+        Deposit Requests
+      </h2>
+
       <div id="deposits"></div>
+
     </section>
 
 
-    <!-- TOURNAMENTS -->
+
+    <!-- =========================
+         TOURNAMENTS
+    ========================= -->
+
     <section class="card">
-      <h2>Tournaments</h2>
-      <div id="adminTournaments"></div>
+
+      <h2>
+        Tournaments
+      </h2>
+
+      <div
+        id="adminTournaments"
+      ></div>
+
     </section>
 
 
-    <!-- ROOM -->
+
+    <!-- =========================
+         ROOM
+    ========================= -->
+
     <section class="card">
 
-      <h2>Room ID / Password</h2>
+      <h2>
+        Room ID / Password
+      </h2>
+
 
       <form id="roomForm">
+
 
         <input
           id="roomTournamentId"
@@ -224,11 +591,13 @@
           required
         >
 
+
         <input
           id="roomId"
           placeholder="Room ID"
           required
         >
+
 
         <input
           id="roomPassword"
@@ -236,30 +605,57 @@
           required
         >
 
-        <button class="btn primary">
+
+        <button
+          class="btn primary"
+        >
           Update room
         </button>
+
 
       </form>
 
     </section>
 
 
-    <!-- PLAYERS -->
+
+    <!-- =========================
+         PLAYERS
+    ========================= -->
+
     <section class="card">
-      <h2>Joined Players</h2>
+
+      <h2>
+        Joined Players
+      </h2>
+
+
       <div id="players"></div>
+
     </section>
+
 
   </section>
 
 </main>
 
 
-<div id="toast" class="toast"></div>
+
+<!-- TOAST -->
+
+<div
+  id="toast"
+  class="toast"
+></div>
 
 
-<script type="module" src="admin.js"></script>
+
+<script
+  type="module"
+  src="admin.js"
+></script>
+
 
 </body>
+
 </html>
