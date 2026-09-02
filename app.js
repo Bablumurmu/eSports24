@@ -1414,10 +1414,11 @@ function startMyTournamentListener() {
 }
 
 /* =========================================================
-   ADD MONEY
+   ADD MONEY - GOOGLE FORM
 ========================================================= */
 
-window.addMoney = async function() {
+window.addMoney = async function () {
+
   if (!currentUser) {
     toast("Please login first.");
     openLogin();
@@ -1427,34 +1428,43 @@ window.addMoney = async function() {
   let qrUrl = "";
 
   try {
-    const settingsSnap =
-      await getDoc(
-        doc(
-          db,
-          "adminSettings",
-          "public"
-        )
-      );
+
+    const settingsSnap = await getDoc(
+      doc(db, "adminSettings", "public")
+    );
 
     if (settingsSnap.exists()) {
-      qrUrl =
-        settingsSnap.data()?.qrUrl ||
-        "";
+      qrUrl = settingsSnap.data()?.qrUrl || "";
     }
+
   } catch (error) {
-    console.error(
-      "QR settings error:",
-      error
-    );
+    console.error("QR settings error:", error);
   }
 
+  const googleFormUrl =
+    "https://forms.gle/AFZpBCza2ua4UP1N9";
+
   openModal(`
+
     <h2>Add Money</h2>
+
+    <p style="
+      text-align:center;
+      margin-bottom:15px;
+      color:#666;
+    ">
+      पहले QR code पर payment करें।
+      Payment के बाद Google Form भरें।
+    </p>
 
     ${
       qrUrl && isHttpUrl(qrUrl)
         ? `
-          <div style="text-align:center;margin-bottom:15px;">
+          <div style="
+            text-align:center;
+            margin-bottom:18px;
+          ">
+
             <img
               src="${esc(qrUrl)}"
               alt="Payment QR"
@@ -1467,16 +1477,9 @@ window.addMoney = async function() {
               "
               onerror="
                 this.style.display='none';
-                document.getElementById('qrError').style.display='block';
               "
             >
 
-            <div
-              id="qrError"
-              style="display:none;color:#dc2626;"
-            >
-              Payment QR image could not be loaded.
-            </div>
           </div>
         `
         : `
@@ -1486,190 +1489,39 @@ window.addMoney = async function() {
         `
     }
 
-    <form
-      id="depositForm"
-      class="formgrid"
-    >
+    <div style="
+      text-align:center;
+      margin-top:15px;
+    ">
 
-      <input
-        id="depositAmount"
-        type="number"
-        min="1"
-        max="50000"
-        step="1"
-        placeholder="Amount ₹"
-        required
-      >
-
-      <input
-        id="depositUtr"
-        placeholder="UTR / Transaction ID"
-        required
-      >
-
-      <input
-        id="depositMobile"
-        placeholder="Mobile number"
-        required
-      >
-
-      <input
-        id="depositEmail"
-        type="email"
-        value="${esc(currentUser.email || "")}"
-        placeholder="Email"
-        required
-      >
-
-      <button
-        id="depositSubmitBtn"
+      <a
+        href="${googleFormUrl}"
+        target="_blank"
+        rel="noopener noreferrer"
         class="btn primary"
-        type="submit"
+        style="
+          display:block;
+          width:100%;
+          box-sizing:border-box;
+          text-decoration:none;
+        "
       >
-        Submit Deposit
-      </button>
+        📝 Payment Form भरें
+      </a>
 
-    </form>
+    </div>
+
+    <p style="
+      text-align:center;
+      margin-top:15px;
+      font-size:13px;
+      color:#777;
+    ">
+      Form में वही email डालें जिससे आपका
+      eSports24 account बना है।
+    </p>
+
   `);
-
-  $("depositForm").onsubmit =
-    async event => {
-
-      event.preventDefault();
-
-      const button =
-        $("depositSubmitBtn");
-
-      try {
-        const user =
-          auth.currentUser;
-
-        if (!user) {
-          throw new Error(
-            "Login session expired. Please login again."
-          );
-        }
-
-        const amount =
-          Number(
-            $("depositAmount")
-              .value
-              .trim()
-          );
-
-        const utr =
-          $("depositUtr")
-            .value
-            .trim();
-
-        const mobile =
-          $("depositMobile")
-            .value
-            .trim();
-
-        const email =
-          $("depositEmail")
-            .value
-            .trim();
-
-        if (
-          !Number.isInteger(amount) ||
-          amount < 1 ||
-          amount > 50000
-        ) {
-          throw new Error(
-            "Amount must be between ₹1 and ₹50,000."
-          );
-        }
-
-        if (
-          utr.length < 4 ||
-          utr.length > 100
-        ) {
-          throw new Error(
-            "Please enter a valid UTR / Transaction ID."
-          );
-        }
-
-        if (
-          mobile.length < 5 ||
-          mobile.length > 20
-        ) {
-          throw new Error(
-            "Please enter a valid mobile number."
-          );
-        }
-
-        if (!email) {
-          throw new Error(
-            "Email is required."
-          );
-        }
-
-        if (button) {
-          button.disabled = true;
-          button.textContent =
-            "Submitting...";
-        }
-
-        const ref =
-          await addDoc(
-            collection(
-              db,
-              "depositRequests"
-            ),
-            {
-              uid: user.uid,
-              amount,
-              utr,
-              mobile,
-              email,
-              status: "pending",
-              createdAt:
-                serverTimestamp(),
-              updatedAt:
-                serverTimestamp()
-            }
-          );
-
-        console.log(
-          "Deposit request:",
-          ref.id
-        );
-
-        closeModal();
-
-        toast(
-          "Deposit request submitted successfully."
-        );
-
-      } catch (error) {
-        console.error(
-          "Deposit error:",
-          error
-        );
-
-        if (button) {
-          button.disabled = false;
-          button.textContent =
-            "Submit Deposit";
-        }
-
-        let message =
-          error.message ||
-          "Unable to submit deposit.";
-
-        if (
-          error.code ===
-          "permission-denied"
-        ) {
-          message =
-            "Firebase permission denied. Publish the new Firestore Rules.";
-        }
-
-        toast(message);
-      }
-    };
 };
 
 /* =========================================================
