@@ -171,6 +171,180 @@ function isTournamentFree(t) {
 
 
 /* =========================
+   FIRST PRIZE HELPER
+========================= */
+
+function getFirstPrize(prizes) {
+
+  if (!prizes) {
+    return 0;
+  }
+
+
+  /*
+    Firestore normally stores prizes
+    as an object/map.
+
+    Example:
+
+    {
+      "1st": 5000,
+      "2nd": 3000,
+      "3rd": 2000
+    }
+  */
+
+  if (
+    typeof prizes === "object" &&
+    !Array.isArray(prizes)
+  ) {
+
+    const entries =
+      Object.entries(prizes);
+
+
+    /*
+      First try exact/common names.
+    */
+
+    const firstKeys = [
+      "1st",
+      "1ST",
+      "1st Prize",
+      "1ST PRIZE",
+      "first",
+      "First",
+      "First Prize",
+      "FIRST PRIZE",
+      "1"
+    ];
+
+
+    for (const key of firstKeys) {
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          prizes,
+          key
+        )
+      ) {
+
+        const amount =
+          Number(prizes[key] || 0);
+
+        if (amount > 0) {
+          return amount;
+        }
+
+      }
+
+    }
+
+
+    /*
+      Case-insensitive fallback.
+    */
+
+    for (const [key, value] of entries) {
+
+      const normalized =
+        String(key)
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, " ");
+
+
+      if (
+        normalized === "1st" ||
+        normalized === "1st prize" ||
+        normalized === "first" ||
+        normalized === "first prize" ||
+        normalized === "1"
+      ) {
+
+        const amount =
+          Number(value || 0);
+
+        if (amount > 0) {
+          return amount;
+        }
+
+      }
+
+    }
+
+  }
+
+
+  /*
+    If prizes happens to be an array.
+  */
+
+  if (Array.isArray(prizes)) {
+
+    for (const item of prizes) {
+
+      if (!item) continue;
+
+
+      if (typeof item === "number") {
+
+        if (item > 0) {
+          return item;
+        }
+
+      }
+
+
+      if (typeof item === "object") {
+
+        const position =
+          String(
+            item.position ||
+            item.rank ||
+            item.place ||
+            item.name ||
+            ""
+          )
+            .trim()
+            .toLowerCase();
+
+
+        if (
+          position === "1st" ||
+          position === "1st prize" ||
+          position === "first" ||
+          position === "first prize" ||
+          position === "1"
+        ) {
+
+          const amount =
+            Number(
+              item.amount ||
+              item.prize ||
+              item.value ||
+              0
+            );
+
+
+          if (amount > 0) {
+            return amount;
+          }
+
+        }
+
+      }
+
+    }
+
+  }
+
+
+  return 0;
+}
+
+
+/* =========================
    MODAL / MENU
 ========================= */
 
@@ -1078,6 +1252,24 @@ function card(idOrT) {
     isTournamentFree(t);
 
 
+  /* =========================
+     FIRST PRIZE
+  ========================= */
+
+  const firstPrize =
+    getFirstPrize(
+      t.prizes
+    );
+
+
+  console.log(
+    "🥇 First Prize:",
+    t.name,
+    firstPrize,
+    t.prizes
+  );
+
+
   return `
 
     <article
@@ -1115,6 +1307,63 @@ function card(idOrT) {
             >
               🎮 BGMI
             </div>
+
+          `
+      }
+
+
+      <!-- =====================
+           FIRST PRIZE DISPLAY
+      ====================== -->
+
+      ${
+        firstPrize > 0
+
+          ? `
+
+            <div
+              class="first-prize-box"
+              style="
+                margin:10px 0 4px;
+                padding:12px 10px;
+                text-align:center;
+                border-radius:10px;
+                background:rgba(255,193,7,0.10);
+                border:1px solid rgba(255,193,7,0.25);
+              "
+            >
+
+              <div
+                style="
+                  font-size:13px;
+                  font-weight:600;
+                  opacity:.8;
+                  text-transform:uppercase;
+                "
+              >
+                🥇 First Prize
+              </div>
+
+
+              <div
+                style="
+                  font-size:25px;
+                  font-weight:800;
+                  margin-top:3px;
+                "
+              >
+                ₹${firstPrize.toLocaleString("en-IN")}
+              </div>
+
+            </div>
+
+          `
+
+          : `
+
+            <!--
+              First prize is zero/not configured.
+            -->
 
           `
       }
