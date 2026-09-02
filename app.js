@@ -15,21 +15,33 @@ import {
 import {
   getFirestore,
   collection,
-  query,
   onSnapshot,
   doc,
   getDoc,
   addDoc,
+  setDoc,
+  query,
   where,
-  getDocs
+  getDocs,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 import { firebaseConfig } from "./firebase-config.js";
+
+
+/* =========================
+   FIREBASE
+========================= */
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
+
+
+/* =========================
+   HELPERS
+========================= */
 
 const $ = id => document.getElementById(id);
 
@@ -39,13 +51,13 @@ let publicSettings = {};
 let tournamentsLoaded = false;
 
 
-/* =========================
-   BASIC HELPERS
-========================= */
-
 function toast(msg) {
   const el = $("toast");
-  if (!el) return;
+
+  if (!el) {
+    console.log(msg);
+    return;
+  }
 
   el.textContent = msg;
   el.classList.add("show");
@@ -57,13 +69,22 @@ function toast(msg) {
 
 
 function openModal(html) {
-  $("modalBody").innerHTML = html;
-  $("modal").hidden = false;
+  const body = $("modalBody");
+  const modal = $("modal");
+
+  if (!body || !modal) return;
+
+  body.innerHTML = html;
+  modal.hidden = false;
 }
 
 
 function closeModal() {
-  $("modal").hidden = true;
+  const modal = $("modal");
+
+  if (modal) {
+    modal.hidden = true;
+  }
 }
 
 
@@ -95,13 +116,20 @@ function fmt(v) {
   if (!v) return "-";
 
   try {
-    const d = v?.toDate
-      ? v.toDate()
-      : new Date(v);
+    const d =
+      typeof v?.toDate === "function"
+        ? v.toDate()
+        : new Date(v);
 
-    if (Number.isNaN(d.getTime())) return "-";
+    if (Number.isNaN(d.getTime())) {
+      return "-";
+    }
 
-    return d.toLocaleString("en-IN");
+    return d.toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+
   } catch {
     return "-";
   }
@@ -121,10 +149,24 @@ function timestampMs(v) {
     }
 
     const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+
+    return Number.isNaN(d.getTime())
+      ? 0
+      : d.getTime();
+
   } catch {
     return 0;
   }
+}
+
+
+function isTournamentFree(t) {
+  return (
+    t.isFree === true ||
+    t.isFree === "true" ||
+    t.isFree === 1 ||
+    t.isFree === "1"
+  );
 }
 
 
@@ -136,24 +178,33 @@ if ($("modalClose")) {
   $("modalClose").onclick = closeModal;
 }
 
+
 if ($("menuBtn")) {
   $("menuBtn").onclick = () => {
-    $("drawer").classList.add("open");
-    $("backdrop").classList.add("open");
+
+    $("drawer")?.classList.add("open");
+    $("backdrop")?.classList.add("open");
+
   };
 }
+
 
 if ($("closeDrawer")) {
   $("closeDrawer").onclick = () => {
-    $("drawer").classList.remove("open");
-    $("backdrop").classList.remove("open");
+
+    $("drawer")?.classList.remove("open");
+    $("backdrop")?.classList.remove("open");
+
   };
 }
 
+
 if ($("backdrop")) {
   $("backdrop").onclick = () => {
-    $("drawer").classList.remove("open");
-    $("backdrop").classList.remove("open");
+
+    $("drawer")?.classList.remove("open");
+    $("backdrop")?.classList.remove("open");
+
   };
 }
 
@@ -163,9 +214,17 @@ if ($("backdrop")) {
 ========================= */
 
 if ($("authBtn")) {
+
   $("authBtn").onclick = () => {
-    currentUser ? renderProfile() : renderAuth();
+
+    if (currentUser) {
+      renderProfile();
+    } else {
+      renderAuth();
+    }
+
   };
+
 }
 
 
@@ -176,6 +235,7 @@ if ($("authBtn")) {
 function renderAuth() {
 
   openModal(`
+
     <h2>Login / Signup</h2>
 
     <form id="loginForm" class="formgrid">
@@ -253,6 +313,7 @@ function renderAuth() {
       </button>
 
     </form>
+
   `);
 
 
@@ -272,6 +333,7 @@ function renderAuth() {
 
     } catch (x) {
 
+      console.error(x);
       toast(x.message);
 
     }
@@ -285,11 +347,15 @@ function renderAuth() {
 
     try {
 
-      const age = Number($("sage").value);
+      const age =
+        Number($("sage").value);
 
       if (age < 18) {
-        throw new Error("Only 18+ players can join.");
+        throw new Error(
+          "Only 18+ players can join."
+        );
       }
+
 
       const cred =
         await createUserWithEmailAndPassword(
@@ -298,20 +364,29 @@ function renderAuth() {
           $("spass").value
         );
 
+
       await saveProfile(
         cred.user,
         {
-          name: $("sname").value.trim(),
-          mobile: $("smobile").value.trim(),
+          name:
+            $("sname").value.trim(),
+
+          mobile:
+            $("smobile").value.trim(),
+
           age,
-          email: $("semail").value.trim()
+
+          email:
+            $("semail").value.trim()
         }
       );
+
 
       closeModal();
 
     } catch (x) {
 
+      console.error(x);
       toast(x.message);
 
     }
@@ -323,19 +398,29 @@ function renderAuth() {
 
     try {
 
-      const c = await signInWithPopup(
-        auth,
-        provider
-      );
+      const c =
+        await signInWithPopup(
+          auth,
+          provider
+        );
+
 
       const p =
         await getDoc(
-          doc(db, "users", c.user.uid)
+          doc(
+            db,
+            "users",
+            c.user.uid
+          )
         );
+
 
       if (!p.exists()) {
 
-        openProfileSetup(c.user, true);
+        openProfileSetup(
+          c.user,
+          true
+        );
 
       } else {
 
@@ -345,6 +430,7 @@ function renderAuth() {
 
     } catch (x) {
 
+      console.error(x);
       toast(x.message);
 
     }
@@ -360,20 +446,19 @@ function renderAuth() {
 
 async function saveProfile(user, data) {
 
-  const ref = doc(
-    db,
-    "users",
-    user.uid
-  );
+  const ref =
+    doc(
+      db,
+      "users",
+      user.uid
+    );
 
-  const snap = await getDoc(ref);
+
+  const snap =
+    await getDoc(ref);
+
 
   if (!snap.exists()) {
-
-    const { setDoc } =
-      await import(
-        "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js"
-      );
 
     await setDoc(
       ref,
@@ -381,7 +466,7 @@ async function saveProfile(user, data) {
         uid: user.uid,
         ...data,
         walletBalance: 0,
-        createdAt: new Date()
+        createdAt: serverTimestamp()
       }
     );
 
@@ -394,12 +479,19 @@ async function saveProfile(user, data) {
    PROFILE SETUP
 ========================= */
 
-function openProfileSetup(user, closeAfter = false) {
+function openProfileSetup(
+  user,
+  closeAfter = false
+) {
 
   openModal(`
+
     <h2>Complete profile</h2>
 
-    <form id="profileSetup" class="formgrid">
+    <form
+      id="profileSetup"
+      class="formgrid"
+    >
 
       <input
         id="pname"
@@ -426,44 +518,59 @@ function openProfileSetup(user, closeAfter = false) {
       </button>
 
     </form>
+
   `);
 
 
-  $("profileSetup").onsubmit = async e => {
+  $("profileSetup").onsubmit =
+    async e => {
 
-    e.preventDefault();
+      e.preventDefault();
 
-    try {
+      try {
 
-      const age = Number(
-        $("page").value
-      );
+        const age =
+          Number(
+            $("page").value
+          );
 
-      if (age < 18) {
-        throw new Error(
-          "Only 18+ players can join."
+
+        if (age < 18) {
+
+          throw new Error(
+            "Only 18+ players can join."
+          );
+
+        }
+
+
+        await saveProfile(
+          user,
+          {
+            name:
+              $("pname").value.trim(),
+
+            mobile:
+              $("pmobile").value.trim(),
+
+            age,
+
+            email:
+              user.email || ""
+          }
         );
+
+
+        closeModal();
+
+      } catch (x) {
+
+        console.error(x);
+        toast(x.message);
+
       }
 
-      await saveProfile(
-        user,
-        {
-          name: $("pname").value.trim(),
-          mobile: $("pmobile").value.trim(),
-          age,
-          email: user.email || ""
-        }
-      );
-
-      closeModal();
-
-    } catch (x) {
-
-      toast(x.message);
-
-    }
-
-  };
+    };
 
 }
 
@@ -472,48 +579,62 @@ function openProfileSetup(user, closeAfter = false) {
    AUTH STATE
 ========================= */
 
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(
+  auth,
+  async user => {
 
-  currentUser = user;
-
-  if ($("authBtn")) {
-    $("authBtn").textContent =
-      user ? "My Profile" : "Login / Signup";
-  }
+    currentUser = user;
 
 
-  if (user) {
+    if ($("authBtn")) {
 
-    try {
-
-      const p =
-        await getDoc(
-          doc(db, "users", user.uid)
-        );
-
-      if (!p.exists()) {
-        openProfileSetup(user);
-      }
-
-    } catch (e) {
-
-      console.warn(
-        "User profile unavailable:",
-        e
-      );
+      $("authBtn").textContent =
+        user
+          ? "My Profile"
+          : "Login / Signup";
 
     }
 
+
+    if (user) {
+
+      try {
+
+        const p =
+          await getDoc(
+            doc(
+              db,
+              "users",
+              user.uid
+            )
+          );
+
+
+        if (!p.exists()) {
+          openProfileSetup(user);
+        }
+
+      } catch (e) {
+
+        console.warn(
+          "User profile unavailable:",
+          e
+        );
+
+      }
+
+    }
+
+
+    loadMyTournament();
+
+
+    if (tournamentsLoaded) {
+      renderHome();
+    }
+
   }
-
-
-  loadMyTournament();
-
-  if (tournamentsLoaded) {
-    renderHome();
-  }
-
-});
+);
 
 
 /* =========================
@@ -522,56 +643,99 @@ onAuthStateChanged(auth, async user => {
 
 function loadTournaments() {
 
-  /*
-    IMPORTANT:
-    No orderBy() here.
-
-    This prevents tournaments from disappearing
-    if an old Firestore document doesn't contain
-    registrationEnd.
-  */
-
-  const q = query(
-    collection(db, "tournaments")
+  console.log(
+    "🔥 Starting tournament listener..."
   );
 
 
-  return onSnapshot(
-    q,
+  const tournamentsRef =
+    collection(
+      db,
+      "tournaments"
+    );
 
-    snap => {
+
+  return onSnapshot(
+
+    tournamentsRef,
+
+    snapshot => {
+
+      console.log(
+        "🔥 Firestore tournament count:",
+        snapshot.size
+      );
+
 
       tournaments =
-        snap.docs.map(d => ({
-          id: d.id,
-          ...d.data()
-        }));
+        snapshot.docs.map(
+          document => {
+
+            const data =
+              document.data();
+
+
+            console.log(
+              "🏆 Tournament:",
+              document.id,
+              data
+            );
+
+
+            return {
+              id: document.id,
+              ...data
+            };
+
+          }
+        );
+
+
+      /*
+        Safe sorting.
+        This DOES NOT hide tournaments.
+      */
+
+      tournaments.sort(
+        (a, b) => {
+
+          const aa =
+            timestampMs(
+              a.registrationEnd
+            );
+
+          const bb =
+            timestampMs(
+              b.registrationEnd
+            );
+
+
+          if (!aa && !bb) {
+            return 0;
+          }
+
+          if (!aa) {
+            return 1;
+          }
+
+          if (!bb) {
+            return -1;
+          }
+
+
+          return aa - bb;
+
+        }
+      );
 
 
       tournamentsLoaded = true;
 
 
-      /*
-        Sort safely on frontend.
-        New tournaments with valid registrationEnd
-        come first.
-      */
-
-      tournaments.sort((a, b) => {
-
-        const aa =
-          timestampMs(a.registrationEnd);
-
-        const bb =
-          timestampMs(b.registrationEnd);
-
-        if (!aa && !bb) return 0;
-        if (!aa) return 1;
-        if (!bb) return -1;
-
-        return aa - bb;
-
-      });
+      console.log(
+        "✅ Tournaments loaded:",
+        tournaments.length
+      );
 
 
       renderHome();
@@ -581,26 +745,50 @@ function loadTournaments() {
     error => {
 
       console.error(
-        "Tournament loading error:",
+        "❌ FIRESTORE TOURNAMENT ERROR:",
         error
       );
+
 
       tournaments = [];
       tournamentsLoaded = true;
 
-      $("app").innerHTML = `
-        <section>
-          <h1>BGMI Tournaments</h1>
 
-          <div class="card">
-            <h3>Unable to load tournaments</h3>
+      if ($("app")) {
 
-            <p class="muted">
-              ${esc(error.message)}
-            </p>
-          </div>
-        </section>
-      `;
+        $("app").innerHTML = `
+
+          <section>
+
+            <h1>
+              BGMI Tournaments
+            </h1>
+
+            <div class="card">
+
+              <h3>
+                Unable to load tournaments
+              </h3>
+
+              <p class="muted">
+                ${esc(
+                  error.message ||
+                  "Unknown Firestore error"
+                )}
+              </p>
+
+              <p>
+                Please check Firestore rules
+                and Firebase configuration.
+              </p>
+
+            </div>
+
+          </section>
+
+        `;
+
+      }
 
     }
 
@@ -619,8 +807,13 @@ async function loadPublicSettings() {
 
     const s =
       await getDoc(
-        doc(db, "adminSettings", "public")
+        doc(
+          db,
+          "adminSettings",
+          "public"
+        )
       );
+
 
     publicSettings =
       s.data() || {};
@@ -637,6 +830,7 @@ async function loadPublicSettings() {
 
       $("logo").src = logo;
       $("logo").hidden = false;
+
 
       if ($("brandText")) {
         $("brandText").hidden = true;
@@ -655,10 +849,15 @@ async function loadPublicSettings() {
     ) {
 
       $("splash").style.backgroundImage =
-        `url("${splash.replace(/"/g, "%22")}")`;
+        `url("${splash.replace(
+          /"/g,
+          "%22"
+        )}")`;
+
 
       $("splash").style.backgroundSize =
         "cover";
+
 
       $("splash").style.backgroundPosition =
         "center";
@@ -678,7 +877,7 @@ async function loadPublicSettings() {
 
 
 /* =========================
-   JOINED TOURNAMENT IDS
+   JOINED IDS
 ========================= */
 
 async function joinedIds() {
@@ -710,22 +909,18 @@ async function joinedIds() {
 
     return new Set(
       s.docs.map(
-        d => d.data().tournamentId
+        d =>
+          d.data().tournamentId
       )
     );
 
   } catch (e) {
 
-    /*
-      IMPORTANT:
-      If participant read permission is denied,
-      don't hide all tournaments.
-    */
-
     console.warn(
       "Joined tournament check unavailable:",
       e
     );
+
 
     return new Set();
 
@@ -738,89 +933,85 @@ async function joinedIds() {
    RENDER HOME
 ========================= */
 
-async function renderHome() {
+function renderHome() {
 
-  if (!$("app")) return;
-
-
-  let ids = new Set();
-
-  try {
-
-    ids = await joinedIds();
-
-  } catch {
-
-    ids = new Set();
-
+  if (!$("app")) {
+    console.error(
+      "❌ #app element not found."
+    );
+    return;
   }
 
 
-  const now = Date.now();
-
-
-  const active =
-    tournaments.filter(t => {
-
-      /*
-        If registrationEnd exists:
-        show only tournaments whose registration
-        has not ended.
-
-        If registrationEnd is missing/invalid:
-        still show the tournament instead of hiding it.
-      */
-
-      const end =
-        timestampMs(t.registrationEnd);
-
-
-      if (!end) {
-        return !ids.has(t.id);
-      }
-
-
-      return (
-        end > now &&
-        !ids.has(t.id)
-      );
-
-    });
+  console.log(
+    "📦 Rendering tournaments:",
+    tournaments.length
+  );
 
 
   $("app").innerHTML = `
+
     <section>
 
-      <h1>BGMI Tournaments</h1>
+      <h1>
+        BGMI Tournaments
+      </h1>
 
       <p class="muted">
-        Registration closing soon tournaments appear first.
+        Available Tournaments
       </p>
 
-      <div id="tourGrid" class="grid">
+      <div
+        id="tourGrid"
+        class="grid"
+      >
 
         ${
-          active.length
-            ? active.map(card).join("")
+          tournaments.length > 0
+
+            ? tournaments
+                .map(t => card(t))
+                .join("")
+
             : `
+
               <div class="card">
-                No active tournaments.
+
+                <h3>
+                  No tournaments found
+                </h3>
+
+                <p class="muted">
+                  Firestore में
+                  <b>tournaments</b>
+                  collection check करें.
+                </p>
+
               </div>
+
             `
         }
 
       </div>
 
     </section>
+
   `;
 
 
   document
-    .querySelectorAll("[data-tour]")
-    .forEach(b => {
+    .querySelectorAll(
+      "[data-tour]"
+    )
+    .forEach(button => {
 
-      b.onclick = () =>
-        details(b.dataset.tour);
+      button.onclick = () => {
+
+        details(
+          button.dataset.tour
+        );
+
+      };
 
     });
 
@@ -841,15 +1032,21 @@ function card(idOrT) {
       : idOrT;
 
 
-  if (!t) return "";
+  if (!t) {
+    return "";
+  }
 
 
   const totalSlots =
-    Number(t.totalSlots || 0);
+    Number(
+      t.totalSlots || 0
+    );
 
 
   const joinedCount =
-    Number(t.joinedCount || 0);
+    Number(
+      t.joinedCount || 0
+    );
 
 
   const left =
@@ -866,26 +1063,45 @@ function card(idOrT) {
 
 
   const entryFee =
-    Number(t.entryFee || 0);
+    Number(
+      t.entryFee || 0
+    );
 
 
   const perKill =
-    Number(t.perKill || 0);
+    Number(
+      t.perKill || 0
+    );
+
+
+  const free =
+    isTournamentFree(t);
 
 
   return `
-    <article class="card tcard">
+
+    <article
+      class="card tcard"
+    >
 
       ${
         image
+
           ? `
+
             <img
               src="${esc(image)}"
-              alt=""
+              alt="${esc(
+                t.name ||
+                "BGMI Tournament"
+              )}"
               loading="lazy"
             >
+
           `
+
           : `
+
             <div
               style="
                 height:180px;
@@ -894,10 +1110,12 @@ function card(idOrT) {
                 justify-content:center;
                 background:#151515;
                 border-radius:10px;
+                font-size:28px;
               "
             >
               🎮 BGMI
             </div>
+
           `
       }
 
@@ -905,23 +1123,34 @@ function card(idOrT) {
       <div class="tcontent">
 
         <h3>
-          ${esc(t.name || "BGMI Tournament")}
+          ${esc(
+            t.name ||
+            "BGMI Tournament"
+          )}
         </h3>
 
 
         <div class="meta">
 
           <span>
-            🏆 ${esc(t.mode || "BGMI")}
+            🏆 ${esc(
+              t.mode ||
+              "BGMI"
+            )}
           </span>
+
 
           <span>
             🎟 ${left}/${totalSlots}
           </span>
 
+
           <span>
-            📅 ${fmt(t.matchDateTime)}
+            📅 ${fmt(
+              t.matchDateTime
+            )}
           </span>
+
 
           <span>
             🎯 Kill ₹${perKill}
@@ -933,10 +1162,12 @@ function card(idOrT) {
         <div class="fee">
 
           ${
-            t.isFree
+            free
               ? "FREE"
               : "₹" +
-                entryFee.toLocaleString("en-IN")
+                entryFee.toLocaleString(
+                  "en-IN"
+                )
           }
 
         </div>
@@ -952,6 +1183,7 @@ function card(idOrT) {
       </div>
 
     </article>
+
   `;
 
 }
@@ -969,7 +1201,12 @@ async function details(id) {
     );
 
 
-  if (!t) return;
+  if (!t) {
+    toast(
+      "Tournament not found."
+    );
+    return;
+  }
 
 
   const image =
@@ -979,39 +1216,60 @@ async function details(id) {
 
 
   const entryFee =
-    Number(t.entryFee || 0);
+    Number(
+      t.entryFee || 0
+    );
 
 
   const perKill =
-    Number(t.perKill || 0);
+    Number(
+      t.perKill || 0
+    );
 
 
   const totalSlots =
-    Number(t.totalSlots || 0);
+    Number(
+      t.totalSlots || 0
+    );
 
 
   const joinedCount =
-    Number(t.joinedCount || 0);
+    Number(
+      t.joinedCount || 0
+    );
+
+
+  const free =
+    isTournamentFree(t);
 
 
   openModal(`
 
     <h2>
-      ${esc(t.name || "BGMI Tournament")}
+      ${esc(
+        t.name ||
+        "BGMI Tournament"
+      )}
     </h2>
 
 
     ${
       image
+
         ? `
+
           <img
             src="${esc(image)}"
+            alt=""
             style="
               width:100%;
               border-radius:10px;
+              margin-bottom:12px;
             "
           >
+
         `
+
         : ""
     }
 
@@ -1022,52 +1280,76 @@ async function details(id) {
 
 
     <div class="prizes">
+
       ${prizeRows(t.prizes)}
+
     </div>
 
 
     <p>
+
       <b>Total Prize:</b>
+
       ₹${Number(
         t.prizeTotal || 0
-      ).toLocaleString("en-IN")}
+      ).toLocaleString(
+        "en-IN"
+      )}
+
     </p>
 
 
     <p>
+
       <b>Slots:</b>
       ${joinedCount}/${totalSlots}
+
       &nbsp;
+
       <b>Mode:</b>
       ${esc(t.mode || "-")}
+
     </p>
 
 
     <p>
+
       <b>Registration End:</b>
-      ${fmt(t.registrationEnd)}
+      ${fmt(
+        t.registrationEnd
+      )}
+
     </p>
 
 
     <p>
+
       <b>Match Date:</b>
-      ${fmt(t.matchDateTime)}
+      ${fmt(
+        t.matchDateTime
+      )}
+
     </p>
 
 
     <p>
+
       <b>Entry:</b>
+
       ${
-        t.isFree
+        free
           ? "FREE"
           : "₹" +
-            entryFee.toLocaleString("en-IN")
+            entryFee.toLocaleString(
+              "en-IN"
+            )
       }
 
       &nbsp;
 
-      <b>Per kill:</b>
+      <b>Per Kill:</b>
       ₹${perKill}
+
     </p>
 
 
@@ -1087,19 +1369,27 @@ async function details(id) {
   `);
 
 
-  $("joinNow").onclick = () => {
+  const joinButton =
+    $("joinNow");
 
-    if (currentUser) {
 
-      joinForm(t);
+  if (joinButton) {
 
-    } else {
+    joinButton.onclick = () => {
 
-      renderAuth();
+      if (currentUser) {
 
-    }
+        joinForm(t);
 
-  };
+      } else {
+
+        renderAuth();
+
+      }
+
+    };
+
+  }
 
 }
 
@@ -1117,9 +1407,11 @@ function prizeRows(prizes) {
   ) {
 
     return `
+
       <p class="muted">
         No prize distribution configured.
       </p>
+
     `;
 
   }
@@ -1132,36 +1424,40 @@ function prizeRows(prizes) {
   if (!entries.length) {
 
     return `
+
       <p class="muted">
         No prize distribution configured.
       </p>
+
     `;
 
   }
 
 
   return entries
-    .map(([pos, amount]) => {
+    .map(
+      ([pos, amount]) => `
 
-      return `
         <div class="listrow">
 
           <b>
             ${esc(pos)}
           </b>
 
-          <span style="float:right">
-
+          <span
+            style="float:right"
+          >
             ₹${Number(
               amount || 0
-            ).toLocaleString("en-IN")}
-
+            ).toLocaleString(
+              "en-IN"
+            )}
           </span>
 
         </div>
-      `;
 
-    })
+      `
+    )
     .join("");
 
 }
@@ -1176,7 +1472,8 @@ function joinForm(t) {
   openModal(`
 
     <h2>
-      Join: ${esc(t.name)}
+      Join:
+      ${esc(t.name)}
     </h2>
 
 
@@ -1191,11 +1488,13 @@ function joinForm(t) {
         required
       >
 
+
       <input
         id="bgmi"
         placeholder="BGMI ID"
         required
       >
+
 
       <input
         id="wa"
@@ -1203,11 +1502,13 @@ function joinForm(t) {
         required
       >
 
+
       <input
         id="upi"
         placeholder="UPI ID"
         required
       >
+
 
       <button class="btn primary">
         Confirm Join
@@ -1242,26 +1543,37 @@ function joinForm(t) {
                   "application/json",
 
                 "Authorization":
-                  "Bearer " + token
+                  "Bearer " +
+                  token
               },
 
-              body: JSON.stringify({
+              body:
+                JSON.stringify({
 
-                tournamentId: t.id,
+                  tournamentId:
+                    t.id,
 
-                characterName:
-                  $("cname").value.trim(),
+                  characterName:
+                    $("cname")
+                      .value
+                      .trim(),
 
-                bgmiId:
-                  $("bgmi").value.trim(),
+                  bgmiId:
+                    $("bgmi")
+                      .value
+                      .trim(),
 
-                whatsapp:
-                  $("wa").value.trim(),
+                  whatsapp:
+                    $("wa")
+                      .value
+                      .trim(),
 
-                upiId:
-                  $("upi").value.trim()
+                  upiId:
+                    $("upi")
+                      .value
+                      .trim()
 
-              })
+                })
 
             }
           );
@@ -1272,9 +1584,12 @@ function joinForm(t) {
 
 
         if (!x.success) {
+
           throw new Error(
-            x.message || "Unable to join tournament."
+            x.message ||
+            "Unable to join tournament."
           );
+
         }
 
 
@@ -1284,10 +1599,14 @@ function joinForm(t) {
 
         renderHome();
 
-
       } catch (x) {
 
-        toast(x.message);
+        console.error(x);
+
+        toast(
+          x.message ||
+          "Unable to join tournament."
+        );
 
       }
 
@@ -1297,7 +1616,7 @@ function joinForm(t) {
 
 
 /* =========================
-   MY TOURNAMENT LIVE LISTENER
+   MY TOURNAMENT LISTENER
 ========================= */
 
 async function loadMyTournament() {
@@ -1326,10 +1645,10 @@ async function loadMyTournament() {
     onSnapshot(
       q,
 
-      s => {
+      snapshot => {
 
         const mine =
-          s.docs.map(
+          snapshot.docs.map(
             d => d.data()
           );
 
@@ -1347,11 +1666,11 @@ async function loadMyTournament() {
 
       },
 
-      e => {
+      error => {
 
         console.warn(
-          "My tournaments listener unavailable:",
-          e
+          "My tournament listener unavailable:",
+          error
         );
 
       }
@@ -1410,8 +1729,9 @@ async function loadMyTournaments() {
       )
     );
 
-
   } catch (e) {
+
+    console.error(e);
 
     toast(
       "Unable to load joined tournaments: " +
@@ -1429,6 +1749,9 @@ async function loadMyTournaments() {
 
 function renderMyTournaments(mine) {
 
+  if (!$("app")) return;
+
+
   $("app").innerHTML = `
 
     <h1>
@@ -1437,116 +1760,144 @@ function renderMyTournaments(mine) {
 
 
     ${
-      mine.map(x => `
+      mine.length
 
-        <div
-          class="card"
-          data-mine-id="${esc(
-            x.tournamentId
-          )}"
-        >
+        ? mine.map(x => `
 
-          <h3>
-            ${esc(
-              x.tournamentName ||
-              "Tournament"
-            )}
-          </h3>
+            <div
+              class="card"
+              data-mine-id="${esc(
+                x.tournamentId
+              )}"
+            >
 
-
-          <p>
-            Character:
-            ${esc(x.characterName || "")}
-            ·
-            BGMI ID:
-            ${esc(x.bgmiId || "")}
-          </p>
+              <h3>
+                ${esc(
+                  x.tournamentName ||
+                  "Tournament"
+                )}
+              </h3>
 
 
-          <p>
-            Joined:
-            ${fmt(x.joinedAt)}
-          </p>
+              <p>
+
+                Character:
+                ${esc(
+                  x.characterName ||
+                  ""
+                )}
+
+                ·
+
+                BGMI ID:
+                ${esc(
+                  x.bgmiId ||
+                  ""
+                )}
+
+              </p>
 
 
-          <div class="room muted">
-            Room details are shown here
-            when published for participants.
-          </div>
+              <p>
 
-        </div>
+                Joined:
+                ${fmt(
+                  x.joinedAt
+                )}
 
-      `).join("")
+              </p>
 
-      || `
 
-        <div class="card">
-          No joined tournaments.
-        </div>
+              <div class="room muted">
 
-      `
+                Room details are shown here
+                when published for participants.
+
+              </div>
+
+            </div>
+
+          `).join("")
+
+        : `
+
+            <div class="card">
+
+              No joined tournaments.
+
+            </div>
+
+          `
     }
 
   `;
 
 
-  mine.forEach(async x => {
+  mine.forEach(
+    async x => {
 
-    try {
+      try {
 
-      const rs =
-        await getDoc(
-          doc(
-            db,
-            "roomCredentials",
-            x.tournamentId
-          )
+        const rs =
+          await getDoc(
+            doc(
+              db,
+              "roomCredentials",
+              x.tournamentId
+            )
+          );
+
+
+        if (!rs.exists()) {
+          return;
+        }
+
+
+        const el =
+          document.querySelector(
+            `[data-mine-id="${CSS.escape(
+              x.tournamentId
+            )}"] .room`
+          );
+
+
+        if (el) {
+
+          const room =
+            rs.data();
+
+
+          el.innerHTML = `
+
+            <b>Room ID:</b>
+            ${esc(
+              room.roomId ||
+              ""
+            )}
+
+            <br>
+
+            <b>Password:</b>
+            ${esc(
+              room.roomPassword ||
+              ""
+            )}
+
+          `;
+
+        }
+
+      } catch (e) {
+
+        console.warn(
+          "Room details unavailable:",
+          e
         );
 
-
-      if (!rs.exists()) {
-        return;
       }
-
-
-      const el =
-        document.querySelector(
-          `[data-mine-id="${CSS.escape(
-            x.tournamentId
-          )}"] .room`
-        );
-
-
-      if (el) {
-
-        el.innerHTML = `
-
-          <b>Room ID:</b>
-          ${esc(
-            rs.data().roomId || ""
-          )}
-
-          <br>
-
-          <b>Password:</b>
-          ${esc(
-            rs.data().roomPassword || ""
-          )}
-
-        `;
-
-      }
-
-    } catch (e) {
-
-      console.warn(
-        "Room details unavailable:",
-        e
-      );
 
     }
-
-  });
+  );
 
 }
 
@@ -1557,116 +1908,151 @@ function renderMyTournaments(mine) {
 
 function renderProfile() {
 
+  if (!currentUser) {
+    renderAuth();
+    return;
+  }
+
+
   getDoc(
     doc(
       db,
       "users",
       currentUser.uid
     )
-  ).then(s => {
+  )
+    .then(s => {
 
-    const p =
-      s.data() || {};
-
-
-    openModal(`
-
-      <h2>
-        My Profile
-      </h2>
+      const p =
+        s.data() || {};
 
 
-      <p>
-        <b>Name:</b>
-        ${esc(p.name || "")}
-      </p>
+      openModal(`
+
+        <h2>
+          My Profile
+        </h2>
 
 
-      <p>
-        <b>Mobile:</b>
-        ${esc(p.mobile || "")}
-      </p>
+        <p>
+
+          <b>Name:</b>
+          ${esc(
+            p.name || ""
+          )}
+
+        </p>
 
 
-      <p>
-        <b>Age:</b>
-        ${esc(p.age || "")}
-      </p>
+        <p>
+
+          <b>Mobile:</b>
+          ${esc(
+            p.mobile || ""
+          )}
+
+        </p>
 
 
-      <p>
-        <b>Email:</b>
-        ${esc(
-          p.email ||
-          currentUser.email ||
-          ""
-        )}
-      </p>
+        <p>
+
+          <b>Age:</b>
+          ${esc(
+            p.age || ""
+          )}
+
+        </p>
 
 
-      <div class="fee">
-        Wallet ₹${Number(
-          p.walletBalance || 0
-        ).toFixed(2)}
-      </div>
+        <p>
+
+          <b>Email:</b>
+          ${esc(
+            p.email ||
+            currentUser.email ||
+            ""
+          )}
+
+        </p>
 
 
-      <div class="row">
+        <div class="fee">
 
-        <button
-          id="addMoney"
-          class="btn primary"
-        >
-          Add Money
-        </button>
+          Wallet ₹${Number(
+            p.walletBalance || 0
+          ).toFixed(2)}
 
-
-        <button
-          id="history"
-          class="btn"
-        >
-          Transactions
-        </button>
+        </div>
 
 
-        <button
-          id="joined"
-          class="btn"
-        >
-          Joined Tournaments
-        </button>
+        <div class="row">
+
+          <button
+            id="addMoney"
+            class="btn primary"
+          >
+            Add Money
+          </button>
 
 
-        <button
-          id="logout"
-          class="btn danger"
-        >
-          Logout
-        </button>
-
-      </div>
-
-    `);
+          <button
+            id="history"
+            class="btn"
+          >
+            Transactions
+          </button>
 
 
-    $("logout").onclick =
-      () =>
-        signOut(auth)
-          .then(closeModal);
+          <button
+            id="joined"
+            class="btn"
+          >
+            Joined Tournaments
+          </button>
 
 
-    $("addMoney").onclick =
-      addMoney;
+          <button
+            id="logout"
+            class="btn danger"
+          >
+            Logout
+          </button>
+
+        </div>
+
+      `);
 
 
-    $("history").onclick =
-      transactions;
+      $("logout").onclick =
+        () => {
+
+          signOut(auth)
+            .then(closeModal);
+
+        };
 
 
-    $("joined").onclick =
-      loadMyTournaments;
+      $("addMoney").onclick =
+        addMoney;
 
-  });
+
+      $("history").onclick =
+        transactions;
+
+
+      $("joined").onclick =
+        loadMyTournaments;
+
+    })
+    .catch(e => {
+
+      console.error(e);
+
+      toast(
+        "Unable to load profile."
+      );
+
+    });
 
 }
 
@@ -1690,7 +2076,8 @@ async function addMoney() {
 
 
     const q =
-      settings.data()?.qrUrl || "";
+      settings.data()?.qrUrl ||
+      "";
 
 
     openModal(`
@@ -1702,7 +2089,9 @@ async function addMoney() {
 
       ${
         q && isHttpUrl(q)
+
           ? `
+
             <img
               src="${esc(q)}"
               style="
@@ -1712,11 +2101,15 @@ async function addMoney() {
                 margin:auto;
               "
             >
+
           `
+
           : `
+
             <p class="muted">
               Payment QR is not configured yet.
             </p>
+
           `
       }
 
@@ -1754,7 +2147,8 @@ async function addMoney() {
           id="demail"
           type="email"
           value="${esc(
-            currentUser.email || ""
+            currentUser.email ||
+            ""
           )}"
           placeholder="Email ID"
           required
@@ -1796,7 +2190,8 @@ async function addMoney() {
                     "application/json",
 
                   "Authorization":
-                    "Bearer " + token
+                    "Bearer " +
+                    token
                 },
 
                 body:
@@ -1804,17 +2199,24 @@ async function addMoney() {
 
                     amount:
                       Number(
-                        $("damt").value
+                        $("damt")
+                          .value
                       ),
 
                     utr:
-                      $("dutr").value.trim(),
+                      $("dutr")
+                        .value
+                        .trim(),
 
                     mobile:
-                      $("dmob").value.trim(),
+                      $("dmob")
+                        .value
+                        .trim(),
 
                     email:
-                      $("demail").value.trim()
+                      $("demail")
+                        .value
+                        .trim()
 
                   })
 
@@ -1827,9 +2229,12 @@ async function addMoney() {
 
 
           if (!x.success) {
+
             throw new Error(
-              x.message
+              x.message ||
+              "Unable to submit deposit."
             );
+
           }
 
 
@@ -1837,17 +2242,22 @@ async function addMoney() {
 
           closeModal();
 
-
         } catch (x) {
 
-          toast(x.message);
+          console.error(x);
+
+          toast(
+            x.message ||
+            "Unable to submit deposit."
+          );
 
         }
 
       };
 
-
   } catch (e) {
+
+    console.error(e);
 
     toast(
       "Unable to load payment settings."
@@ -1886,11 +2296,17 @@ async function transactions() {
 
     const rows =
       s.docs
-        .map(d => d.data())
+        .map(
+          d => d.data()
+        )
         .sort(
           (a, b) =>
-            timestampMs(b.createdAt) -
-            timestampMs(a.createdAt)
+            timestampMs(
+              b.createdAt
+            ) -
+            timestampMs(
+              a.createdAt
+            )
         );
 
 
@@ -1902,46 +2318,54 @@ async function transactions() {
 
 
       ${
-        rows.map(x => `
+        rows.length
 
-          <div class="listrow">
+          ? rows.map(x => `
 
-            <b>
-              ${esc(x.type || "")}
-            </b>
+              <div class="listrow">
 
-            —
-            ₹${Number(
-              x.amount || 0
-            ).toFixed(2)}
+                <b>
+                  ${esc(
+                    x.type ||
+                    ""
+                  )}
+                </b>
 
-            <br>
+                —
 
-            <span class="muted">
+                ₹${Number(
+                  x.amount || 0
+                ).toFixed(2)}
 
-              ${esc(
-                x.description || ""
-              )}
+                <br>
 
-              ·
+                <span class="muted">
 
-              ${fmt(
-                x.createdAt
-              )}
+                  ${esc(
+                    x.description ||
+                    ""
+                  )}
 
-            </span>
+                  ·
 
-          </div>
+                  ${fmt(
+                    x.createdAt
+                  )}
 
-        `).join("")
+                </span>
 
-        || "No transactions."
+              </div>
+
+            `).join("")
+
+          : "No transactions."
       }
 
     `);
 
-
   } catch (e) {
+
+    console.error(e);
 
     toast(
       "Unable to load transactions: " +
@@ -1957,7 +2381,13 @@ async function transactions() {
    STATIC PAGES
 ========================= */
 
-function renderStatic(title, body) {
+function renderStatic(
+  title,
+  body
+) {
+
+  if (!$("app")) return;
+
 
   $("app").innerHTML = `
 
@@ -1983,7 +2413,8 @@ function renderStatic(title, body) {
 function route() {
 
   const h =
-    location.hash || "#home";
+    location.hash ||
+    "#home";
 
 
   if (h === "#my-tournaments") {
@@ -1998,13 +2429,17 @@ function route() {
       "About Us",
 
       `
+
         <p>
+
           eSports24 is a tournament-registration
           platform concept for competitive BGMI events.
           Tournament information, entry rules, prizes
           and payment status should always be verified
           before joining.
+
         </p>
+
       `
     );
 
@@ -2016,26 +2451,36 @@ function route() {
       "Terms & Conditions",
 
       `
+
         <p>
+
           Users must be 18 or older to participate.
           Do not share OTPs, UPI PINs, card PINs
           or passwords.
+
         </p>
 
+
         <p>
+
           Tournament rules, eligibility, refunds,
           prize settlement and disqualification
           conditions must be displayed before joining.
+
         </p>
 
+
         <p>
+
           Paid gaming/tournament operations may be
           subject to applicable Indian and state laws,
           tax rules, consumer protection requirements
           and platform/game publisher rules.
           Obtain appropriate legal and tax advice
           before launch.
+
         </p>
+
       `
     );
 
@@ -2047,24 +2492,34 @@ function route() {
       "Privacy Policy",
 
       `
+
         <p>
+
           eSports24 may collect name, mobile number,
           email, age, BGMI ID, WhatsApp number,
           UPI ID and transaction/tournament records
           needed to operate the service.
+
         </p>
 
+
         <p>
+
           Use access controls and retention limits
           appropriate to the service.
           Users may contact support for
           data-related requests.
+
         </p>
 
+
         <p>
+
           Never collect UPI PIN, OTP, card PIN
           or banking passwords.
+
         </p>
+
       `
     );
 
@@ -2076,11 +2531,15 @@ function route() {
       "Contact Us",
 
       `
+
         <p>
+
           For support, contact
+
           <a href="mailto:alesihelpdesk@gmail.com">
             alesihelpdesk@gmail.com
           </a>.
+
         </p>
 
 
@@ -2095,6 +2554,7 @@ function route() {
             required
           >
 
+
           <input
             id="se"
             type="email"
@@ -2102,11 +2562,13 @@ function route() {
             required
           >
 
+
           <input
             id="ss"
             placeholder="Subject"
             required
           >
+
 
           <textarea
             id="sm"
@@ -2122,6 +2584,7 @@ function route() {
           </button>
 
         </form>
+
       `
     );
 
@@ -2134,15 +2597,6 @@ function route() {
 
         try {
 
-          const {
-            addDoc,
-            serverTimestamp
-          } =
-            await import(
-              "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js"
-            );
-
-
           await addDoc(
             collection(
               db,
@@ -2150,16 +2604,24 @@ function route() {
             ),
             {
               name:
-                $("sn").value.trim(),
+                $("sn")
+                  .value
+                  .trim(),
 
               email:
-                $("se").value.trim(),
+                $("se")
+                  .value
+                  .trim(),
 
               subject:
-                $("ss").value.trim(),
+                $("ss")
+                  .value
+                  .trim(),
 
               message:
-                $("sm").value.trim(),
+                $("sm")
+                  .value
+                  .trim(),
 
               createdAt:
                 serverTimestamp()
@@ -2174,10 +2636,13 @@ function route() {
 
           e.target.reset();
 
-
         } catch (x) {
 
-          toast(x.message);
+          console.error(x);
+
+          toast(
+            x.message
+          );
 
         }
 
@@ -2185,7 +2650,13 @@ function route() {
 
   }
 
-  else if (h === "#home") {
+  else {
+
+    /*
+      Home page.
+      IMPORTANT:
+      We do NOT filter tournaments here.
+    */
 
     renderHome();
 
@@ -2205,7 +2676,11 @@ window.addEventListener(
 
 
 loadPublicSettings();
+
+
 loadTournaments();
+
+
 route();
 
 
@@ -2213,10 +2688,13 @@ route();
    SPLASH
 ========================= */
 
-setTimeout(() => {
+setTimeout(
+  () => {
 
-  if ($("splash")) {
-    $("splash").hidden = true;
-  }
+    if ($("splash")) {
+      $("splash").hidden = true;
+    }
 
-}, 900);
+  },
+  900
+);
