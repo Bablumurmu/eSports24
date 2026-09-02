@@ -174,38 +174,47 @@ function isTournamentFree(t) {
    FIRST PRIZE HELPER
 ========================= */
 
-function getFirstPrize(prizes) {
+function getFirstPrize(t) {
 
-  if (!prizes) {
+  if (!t) {
     return 0;
   }
 
 
   /*
-    Firestore normally stores prizes
-    as an object/map.
+    1️⃣ Direct Firestore fields
 
-    Example:
-
-    {
-      "1st": 5000,
-      "2nd": 3000,
-      "3rd": 2000
-    }
+    Supports:
+    prize1
+    firstPrize
+    firstPrizeAmount
   */
 
+  const directPrize =
+    Number(
+      t.prize1 ??
+      t.firstPrize ??
+      t.firstPrizeAmount ??
+      0
+    );
+
+  if (directPrize > 0) {
+    return directPrize;
+  }
+
+
+  /*
+    2️⃣ prizes object/map
+  */
+
+  const prizes = t.prizes;
+
+
   if (
+    prizes &&
     typeof prizes === "object" &&
     !Array.isArray(prizes)
   ) {
-
-    const entries =
-      Object.entries(prizes);
-
-
-    /*
-      First try exact/common names.
-    */
 
     const firstKeys = [
       "1st",
@@ -216,9 +225,15 @@ function getFirstPrize(prizes) {
       "First",
       "First Prize",
       "FIRST PRIZE",
+      "firstPrize",
+      "FirstPrize",
       "1"
     ];
 
+
+    /*
+      Exact/common keys
+    */
 
     for (const key of firstKeys) {
 
@@ -229,11 +244,45 @@ function getFirstPrize(prizes) {
         )
       ) {
 
+        const value =
+          prizes[key];
+
+
+        /*
+          Direct number
+        */
+
         const amount =
-          Number(prizes[key] || 0);
+          Number(value);
+
 
         if (amount > 0) {
           return amount;
+        }
+
+
+        /*
+          Nested object
+        */
+
+        if (
+          value &&
+          typeof value === "object"
+        ) {
+
+          const nestedAmount =
+            Number(
+              value.amount ??
+              value.prize ??
+              value.value ??
+              0
+            );
+
+
+          if (nestedAmount > 0) {
+            return nestedAmount;
+          }
+
         }
 
       }
@@ -242,28 +291,40 @@ function getFirstPrize(prizes) {
 
 
     /*
-      Case-insensitive fallback.
+      Case-insensitive fallback
     */
 
-    for (const [key, value] of entries) {
+    for (
+      const [key, value]
+      of Object.entries(prizes)
+    ) {
 
       const normalized =
         String(key)
           .trim()
           .toLowerCase()
-          .replace(/\s+/g, " ");
+          .replace(/\s+/g, "");
 
 
       if (
         normalized === "1st" ||
-        normalized === "1st prize" ||
+        normalized === "1stprize" ||
         normalized === "first" ||
-        normalized === "first prize" ||
+        normalized === "firstprize" ||
         normalized === "1"
       ) {
 
         const amount =
-          Number(value || 0);
+          value &&
+          typeof value === "object"
+            ? Number(
+                value.amount ??
+                value.prize ??
+                value.value ??
+                0
+              )
+            : Number(value);
+
 
         if (amount > 0) {
           return amount;
@@ -277,7 +338,7 @@ function getFirstPrize(prizes) {
 
 
   /*
-    If prizes happens to be an array.
+    3️⃣ prizes array
   */
 
   if (Array.isArray(prizes)) {
@@ -286,6 +347,10 @@ function getFirstPrize(prizes) {
 
       if (!item) continue;
 
+
+      /*
+        Array item is direct number
+      */
 
       if (typeof item === "number") {
 
@@ -296,33 +361,38 @@ function getFirstPrize(prizes) {
       }
 
 
+      /*
+        Array item is object
+      */
+
       if (typeof item === "object") {
 
         const position =
           String(
-            item.position ||
-            item.rank ||
-            item.place ||
-            item.name ||
+            item.position ??
+            item.rank ??
+            item.place ??
+            item.name ??
             ""
           )
             .trim()
-            .toLowerCase();
+            .toLowerCase()
+            .replace(/\s+/g, "");
 
 
         if (
           position === "1st" ||
-          position === "1st prize" ||
+          position === "1stprize" ||
           position === "first" ||
-          position === "first prize" ||
+          position === "firstprize" ||
           position === "1"
         ) {
 
           const amount =
             Number(
-              item.amount ||
-              item.prize ||
-              item.value ||
+              item.amount ??
+              item.prize ??
+              item.value ??
               0
             );
 
@@ -339,6 +409,10 @@ function getFirstPrize(prizes) {
 
   }
 
+
+  /*
+    Nothing found
+  */
 
   return 0;
 }
@@ -865,11 +939,6 @@ function loadTournaments() {
         );
 
 
-      /*
-        Safe sorting.
-        This DOES NOT hide tournaments.
-      */
-
       tournaments.sort(
         (a, b) => {
 
@@ -1257,16 +1326,19 @@ function card(idOrT) {
   ========================= */
 
   const firstPrize =
-    getFirstPrize(
-      t.prizes
-    );
+    getFirstPrize(t);
 
 
   console.log(
-    "🥇 First Prize:",
-    t.name,
-    firstPrize,
-    t.prizes
+    "🏆 Tournament Prize Debug:",
+    {
+      name: t.name,
+      prize1: t.prize1,
+      firstPrize: t.firstPrize,
+      firstPrizeAmount: t.firstPrizeAmount,
+      prizes: t.prizes,
+      detectedFirstPrize: firstPrize
+    }
   );
 
 
@@ -1316,57 +1388,43 @@ function card(idOrT) {
            FIRST PRIZE DISPLAY
       ====================== -->
 
-      ${
-        firstPrize > 0
+      <div
+        class="first-prize-box"
+        style="
+          margin:10px 0 8px;
+          padding:10px;
+          text-align:center;
+          border-radius:10px;
+          background:rgba(255,193,7,0.12);
+          border:1px solid rgba(255,193,7,0.35);
+        "
+      >
 
-          ? `
-
-            <div
-              class="first-prize-box"
-              style="
-                margin:10px 0 4px;
-                padding:12px 10px;
-                text-align:center;
-                border-radius:10px;
-                background:rgba(255,193,7,0.10);
-                border:1px solid rgba(255,193,7,0.25);
-              "
-            >
-
-              <div
-                style="
-                  font-size:13px;
-                  font-weight:600;
-                  opacity:.8;
-                  text-transform:uppercase;
-                "
-              >
-                🥇 First Prize
-              </div>
+        <div
+          style="
+            font-size:13px;
+            font-weight:700;
+            opacity:.85;
+            text-transform:uppercase;
+          "
+        >
+          🥇 FIRST PRIZE
+        </div>
 
 
-              <div
-                style="
-                  font-size:25px;
-                  font-weight:800;
-                  margin-top:3px;
-                "
-              >
-                ₹${firstPrize.toLocaleString("en-IN")}
-              </div>
+        <div
+          style="
+            font-size:24px;
+            font-weight:800;
+            margin-top:3px;
+          "
+        >
+          ₹${Number(
+            firstPrize || 0
+          ).toLocaleString("en-IN")}
+        </div>
 
-            </div>
-
-          `
-
-          : `
-
-            <!--
-              First prize is zero/not configured.
-            -->
-
-          `
-      }
+      </div>
 
 
       <div class="tcontent">
@@ -1530,7 +1588,7 @@ async function details(id) {
 
     <div class="prizes">
 
-      ${prizeRows(t.prizes)}
+      ${prizeRows(t.prizes, t)}
 
     </div>
 
@@ -1647,12 +1705,104 @@ async function details(id) {
    PRIZE DISPLAY
 ========================= */
 
-function prizeRows(prizes) {
+function prizeRows(prizes, tournament = null) {
+
+  /*
+    If direct prize1 exists,
+    include it as first prize.
+  */
+
+  if (
+    tournament &&
+    Number(tournament.prize1 || 0) > 0
+  ) {
+
+    const directPrize =
+      Number(
+        tournament.prize1
+      );
+
+
+    let html = `
+
+      <div class="listrow">
+
+        <b>
+          🥇 1st Prize
+        </b>
+
+        <span
+          style="float:right"
+        >
+          ₹${directPrize.toLocaleString(
+            "en-IN"
+          )}
+        </span>
+
+      </div>
+
+    `;
+
+
+    if (
+      prizes &&
+      typeof prizes === "object" &&
+      !Array.isArray(prizes)
+    ) {
+
+      html += Object.entries(prizes)
+        .filter(
+          ([key]) =>
+            ![
+              "1st",
+              "1ST",
+              "1st Prize",
+              "1ST PRIZE",
+              "first",
+              "First",
+              "First Prize",
+              "FIRST PRIZE",
+              "firstPrize",
+              "FirstPrize",
+              "1"
+            ].includes(key)
+        )
+        .map(
+          ([pos, amount]) => `
+
+            <div class="listrow">
+
+              <b>
+                ${esc(pos)}
+              </b>
+
+              <span
+                style="float:right"
+              >
+                ₹${Number(
+                  amount || 0
+                ).toLocaleString(
+                  "en-IN"
+                )}
+              </span>
+
+            </div>
+
+          `
+        )
+        .join("");
+
+    }
+
+
+    return html;
+
+  }
+
 
   if (
     !prizes ||
-    typeof prizes !== "object" ||
-    Array.isArray(prizes)
+    typeof prizes !== "object"
   ) {
 
     return `
@@ -1662,6 +1812,100 @@ function prizeRows(prizes) {
       </p>
 
     `;
+
+  }
+
+
+  if (Array.isArray(prizes)) {
+
+    if (!prizes.length) {
+
+      return `
+
+        <p class="muted">
+          No prize distribution configured.
+        </p>
+
+      `;
+
+    }
+
+
+    return prizes
+      .map(item => {
+
+        if (
+          typeof item === "number"
+        ) {
+
+          return `
+
+            <div class="listrow">
+
+              <b>
+                Prize
+              </b>
+
+              <span style="float:right">
+                ₹${item.toLocaleString(
+                  "en-IN"
+                )}
+              </span>
+
+            </div>
+
+          `;
+
+        }
+
+
+        if (
+          item &&
+          typeof item === "object"
+        ) {
+
+          const pos =
+            item.position ??
+            item.rank ??
+            item.place ??
+            item.name ??
+            "Prize";
+
+
+          const amount =
+            Number(
+              item.amount ??
+              item.prize ??
+              item.value ??
+              0
+            );
+
+
+          return `
+
+            <div class="listrow">
+
+              <b>
+                ${esc(pos)}
+              </b>
+
+              <span style="float:right">
+                ₹${amount.toLocaleString(
+                  "en-IN"
+                )}
+              </span>
+
+            </div>
+
+          `;
+
+        }
+
+
+        return "";
+
+      })
+      .join("");
 
   }
 
@@ -1685,27 +1929,41 @@ function prizeRows(prizes) {
 
   return entries
     .map(
-      ([pos, amount]) => `
+      ([pos, amount]) => {
 
-        <div class="listrow">
+        const value =
+          amount &&
+          typeof amount === "object"
+            ? Number(
+                amount.amount ??
+                amount.prize ??
+                amount.value ??
+                0
+              )
+            : Number(amount || 0);
 
-          <b>
-            ${esc(pos)}
-          </b>
 
-          <span
-            style="float:right"
-          >
-            ₹${Number(
-              amount || 0
-            ).toLocaleString(
-              "en-IN"
-            )}
-          </span>
+        return `
 
-        </div>
+          <div class="listrow">
 
-      `
+            <b>
+              ${esc(pos)}
+            </b>
+
+            <span
+              style="float:right"
+            >
+              ₹${value.toLocaleString(
+                "en-IN"
+              )}
+            </span>
+
+          </div>
+
+        `;
+
+      }
     )
     .join("");
 
@@ -2900,12 +3158,6 @@ function route() {
   }
 
   else {
-
-    /*
-      Home page.
-      IMPORTANT:
-      We do NOT filter tournaments here.
-    */
 
     renderHome();
 
