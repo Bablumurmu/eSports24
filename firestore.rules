@@ -3,98 +3,163 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
-
     function isAdmin() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      return request.auth != null
+        && exists(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        )
+        && get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data.role == "admin";
     }
 
-    match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
+    match /users/{userId} {
 
-      allow create: if isOwner(uid)
-        && request.resource.data.uid == uid
-        && request.resource.data.name is string
-        && request.resource.data.mobile is string
-        && request.resource.data.email is string
-        && request.resource.data.age is number
-        && request.resource.data.age >= 18
-        && request.resource.data.walletBalance == 0;
+      allow read: if request.auth != null;
 
-      // Player can edit profile fields, but cannot alter walletBalance.
-      allow update: if isOwner(uid)
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.walletBalance == resource.data.walletBalance
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["name","mobile","age","email"])
-        && request.resource.data.age is number
-        && request.resource.data.age >= 18;
+      allow create: if request.auth != null
+        && request.auth.uid == userId;
 
-      allow delete: if isAdmin();
+      allow update: if isAdmin();
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            "name",
+            "mobile",
+            "age",
+            "email"
+          ]);
     }
 
-    match /tournaments/{id} {
+
+    match /tournaments/{tournamentId} {
+
       allow read: if true;
-      // All tournament writes happen through trusted Cloud Functions.
-      allow create, update, delete: if false;
-    }
 
-    match /tournamentParticipants/{id} {
-      allow read: if signedIn() &&
-        (resource.data.uid == request.auth.uid || isAdmin());
-
-      // Joining is server-side and atomic.
       allow create, update, delete: if isAdmin();
     }
 
-    match /walletTransactions/{id} {
-      allow read: if signedIn() &&
-        (resource.data.uid == request.auth.uid || isAdmin());
-      // Ledger writes are server-side.
+
+    match /tournaments/{tournamentId}/players/{playerId} {
+
+      allow read: if request.auth != null;
+
       allow create, update, delete: if isAdmin();
     }
 
-    match /depositRequests/{id} {
-      // Deposit submission/review is handled by trusted Cloud Functions.
-      allow create: if false;
-      allow read: if signedIn() &&
-        (resource.data.uid == request.auth.uid || isAdmin());
+
+    match /tournamentParticipants/{participantId} {
+
+      allow read: if (
+        request.auth != null
+        && resource.data.uid == request.auth.uid
+      ) || isAdmin();
+
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+
       allow update, delete: if isAdmin();
     }
 
-    match /depositUtrs/{utr} {
-      allow read, write: if false;
-    }
 
     match /roomCredentials/{tournamentId} {
-      allow read: if signedIn() && (isAdmin() ||
-        exists(/databases/$(database)/documents/tournamentParticipants/$(tournamentId + "_" + request.auth.uid)));
-      allow create, update, delete: if false;
+
+      allow read: if request.auth != null;
+
+      allow create, update, delete: if isAdmin();
     }
 
-    match /supportMessages/{id} {
-      allow create: if request.resource.data.name is string
-        && request.resource.data.email is string
-        && request.resource.data.subject is string
-        && request.resource.data.message is string;
+
+    match /deposits/{depositId} {
+
+      allow read, update, delete: if isAdmin();
+
+      allow create: if request.auth != null;
+    }
+
+
+    // ===============================
+    // DEPOSIT REQUESTS
+    // ===============================
+
+    match /depositRequests/{depositId} {
+
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+
+        && request.resource.data.status == "pending"
+
+        && request.resource.data.amount is number
+        && request.resource.data.amount >= 1
+        && request.resource.data.amount <= 50000
+
+        && request.resource.data.utr is string
+        && request.resource.data.utr.size() >= 4
+        && request.resource.data.utr.size() <= 100
+
+        && request.resource.data.mobile is string
+        && request.resource.data.mobile.size() >= 5
+        && request.resource.data.mobile.size() <= 20
+
+        && request.resource.data.email is string;
+
+
+      allow read: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
 
       allow read, update, delete: if isAdmin();
     }
 
-    match /adminSettings/{id} {
+
+    match /walletTransactions/{transactionId} {
+
+      allow read: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      allow read: if isAdmin();
+
+      allow create: if isAdmin();
+
+      allow update, delete: if isAdmin();
+    }
+
+
+    match /adminSettings/{settingId} {
+
       allow read: if true;
+
       allow create, update, delete: if isAdmin();
     }
 
+
+    match /settings/{settingId} {
+
+      allow read: if true;
+
+      allow write: if isAdmin();
+    }
+
+
+    match /supportMessages/{messageId} {
+
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+
+      allow read: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      allow read, update, delete: if isAdmin();
+    }
+
+
     match /{document=**} {
+
       allow read, write: if false;
     }
+
   }
 }
