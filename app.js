@@ -1,37 +1,36 @@
 import {
-  initializeApp
+initializeApp
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 
 import {
-  getAuth,
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+getAuth,
+onAuthStateChanged,
+GoogleAuthProvider,
+signInWithPopup,
+signOut,
+createUserWithEmailAndPassword,
+signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 import {
-  getFirestore,
-  collection,
-  onSnapshot,
-  doc,
-  getDoc,
-  addDoc,
-  setDoc,
-  query,
-  where,
-  getDocs,
-  serverTimestamp,
-  runTransaction
+getFirestore,
+collection,
+onSnapshot,
+doc,
+getDoc,
+addDoc,
+setDoc,
+query,
+where,
+getDocs,
+serverTimestamp,
+runTransaction
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 import { firebaseConfig } from "./firebase-config.js";
 
-
 /* =========================
-   FIREBASE
+FIREBASE
 ========================= */
 
 const app = initializeApp(firebaseConfig);
@@ -39,9 +38,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-
 /* =========================
-   GLOBAL STATE
+GLOBAL STATE
 ========================= */
 
 const $ = id => document.getElementById(id);
@@ -57,3457 +55,3360 @@ let myTournamentUnsubscribe = null;
 
 let appStarted = false;
 
-
 /* =========================
-   HELPERS
+HELPERS
 ========================= */
 
 function toast(message) {
 
-  const el = $("toast");
+const el = $("toast");
 
-  if (!el) {
-    alert(message);
-    return;
-  }
-
-  el.textContent = message;
-  el.classList.add("show");
-
-  setTimeout(() => {
-    el.classList.remove("show");
-  }, 3000);
+if (!el) {
+alert(message);
+return;
 }
 
+el.textContent = message;
+el.classList.add("show");
+
+setTimeout(() => {
+el.classList.remove("show");
+}, 3000);
+}
 
 function openModal(html) {
 
-  const modal = $("modal");
+const modal = $("modal");
 
-  if (!modal) return;
+if (!modal) return;
 
-  modal.innerHTML = `
-    <div class="modal-backdrop">
-      <div class="modal-box">
+modal.innerHTML = `
+<div class="modal-backdrop">
+<div class="modal-box">
 
-        <button
-          class="modal-close"
-          onclick="closeModal()"
-        >
-          ×
-        </button>
+<button  
+      class="modal-close"  
+      onclick="closeModal()"  
+    >  
+      ×  
+    </button>  
 
-        ${html}
+    ${html}  
 
-      </div>
-    </div>
-  `;
+  </div>  
+</div>
 
-  modal.classList.add("show");
+`;
+
+modal.classList.add("show");
 }
-
 
 function closeModal() {
 
-  const modal = $("modal");
+const modal = $("modal");
 
-  if (!modal) return;
+if (!modal) return;
 
-  modal.classList.remove("show");
-  modal.innerHTML = "";
+modal.classList.remove("show");
+modal.innerHTML = "";
 }
-
 
 window.closeModal = closeModal;
 
-
 function isHttpUrl(value) {
 
-  try {
+try {
 
-    const url = new URL(value);
+const url = new URL(value);  
 
-    return (
-      url.protocol === "http:" ||
-      url.protocol === "https:"
-    );
+return (  
+  url.protocol === "http:" ||  
+  url.protocol === "https:"  
+);
 
-  } catch {
+} catch {
 
-    return false;
-
-  }
+return false;
 
 }
 
+}
 
 function esc(value) {
 
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+return String(value ?? "")
+.replace(/&/g, "&")
+.replace(/</g, "<")
+.replace(/>/g, ">")
+.replace(/"/g, """)
+.replace(/'/g, "'");
 
 }
-
 
 function fmt(value) {
 
-  if (!value) return "—";
+if (!value) return "—";
 
-  let date;
+let date;
 
-  if (value?.toDate) {
-    date = value.toDate();
-  } else if (value instanceof Date) {
-    date = value;
-  } else {
-    date = new Date(value);
-  }
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-
-  return date.toLocaleString("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  });
-
+if (value?.toDate) {
+date = value.toDate();
+} else if (value instanceof Date) {
+date = value;
+} else {
+date = new Date(value);
 }
 
+if (Number.isNaN(date.getTime())) {
+return "—";
+}
+
+return date.toLocaleString("en-IN", {
+dateStyle: "medium",
+timeStyle: "short"
+});
+
+}
 
 function timestampMs(value) {
 
-  if (!value) return 0;
+if (!value) return 0;
 
-  if (typeof value.toMillis === "function") {
-    return value.toMillis();
-  }
-
-  if (value instanceof Date) {
-    return value.getTime();
-  }
-
-  const n = new Date(value).getTime();
-
-  return Number.isNaN(n) ? 0 : n;
-
+if (typeof value.toMillis === "function") {
+return value.toMillis();
 }
 
+if (value instanceof Date) {
+return value.getTime();
+}
+
+const n = new Date(value).getTime();
+
+return Number.isNaN(n) ? 0 : n;
+
+}
 
 function isTournamentFree(tournament) {
 
-  const fee = Number(
-    tournament?.entryFee ??
-    tournament?.entry_fee ??
-    tournament?.fee ??
-    0
-  );
+const fee = Number(
+tournament?.entryFee ??
+tournament?.entry_fee ??
+tournament?.fee ??
+0
+);
 
-  return fee <= 0;
+return fee <= 0;
 
 }
 
-
 /* =========================
-   PRIZE HELPERS
+PRIZE HELPERS
 ========================= */
 
 function getFirstPrize(tournament) {
 
-  const prize =
-    tournament?.prizeDistribution ||
-    tournament?.prizes ||
-    tournament?.prize ||
-    {};
+const prize =
+tournament?.prizeDistribution ||
+tournament?.prizes ||
+tournament?.prize ||
+{};
 
-  if (Array.isArray(prize)) {
+if (Array.isArray(prize)) {
 
-    const first = prize[0];
+const first = prize[0];  
 
-    if (typeof first === "object") {
+if (typeof first === "object") {  
 
-      return (
-        first.amount ??
-        first.prize ??
-        first.value ??
-        0
-      );
+  return (  
+    first.amount ??  
+    first.prize ??  
+    first.value ??  
+    0  
+  );  
 
-    }
+}  
 
-    return first ?? 0;
-
-  }
-
-  if (typeof prize === "object") {
-
-    return (
-      prize["1"] ??
-      prize.first ??
-      prize.firstPrize ??
-      prize["1st"] ??
-      0
-    );
-
-  }
-
-  return prize || 0;
+return first ?? 0;
 
 }
 
+if (typeof prize === "object") {
+
+return (  
+  prize["1"] ??  
+  prize.first ??  
+  prize.firstPrize ??  
+  prize["1st"] ??  
+  0  
+);
+
+}
+
+return prize || 0;
+
+}
 
 /* =========================
-   MODAL BACKDROP
+MODAL BACKDROP
 ========================= */
 
 document.addEventListener("click", event => {
 
-  const modal = $("modal");
+const modal = $("modal");
 
-  if (
-    modal &&
-    event.target === modal
-  ) {
-    closeModal();
-  }
+if (
+modal &&
+event.target === modal
+) {
+closeModal();
+}
 
 });
 
-
 /* =========================
-   AUTH BUTTON
+AUTH BUTTON
 ========================= */
 
 const authBtn = $("authBtn");
 
 if (authBtn) {
 
-  authBtn.onclick = () => {
+authBtn.onclick = () => {
 
-    if (currentUser) {
-      renderProfile();
-    } else {
-      openLogin();
-    }
+if (currentUser) {  
+  renderProfile();  
+} else {  
+  openLogin();  
+}
 
-  };
+};
 
 }
 
-
 /* =========================
-   LOGIN
+LOGIN
 ========================= */
 
 function openLogin() {
 
-  openModal(`
+openModal(`
 
-    <h2>Login</h2>
+<h2>Login</h2>  
 
-    <form id="loginForm" class="formgrid">
+<form id="loginForm" class="formgrid">  
 
-      <input
-        id="loginEmail"
-        type="email"
-        placeholder="Email"
-        required
-      >
+  <input  
+    id="loginEmail"  
+    type="email"  
+    placeholder="Email"  
+    required  
+  >  
 
-      <input
-        id="loginPassword"
-        type="password"
-        placeholder="Password"
-        required
-      >
+  <input  
+    id="loginPassword"  
+    type="password"  
+    placeholder="Password"  
+    required  
+  >  
 
-      <button
-        type="submit"
-        class="btn primary"
-      >
-        Login
-      </button>
+  <button  
+    type="submit"  
+    class="btn primary"  
+  >  
+    Login  
+  </button>  
 
-    </form>
+</form>  
 
-    <button
-      id="googleLogin"
-      class="btn"
-      style="margin-top:10px;width:100%;"
-    >
-      Continue with Google
-    </button>
+<button  
+  id="googleLogin"  
+  class="btn"  
+  style="margin-top:10px;width:100%;"  
+>  
+  Continue with Google  
+</button>  
 
-    <p style="margin-top:15px;">
-      Don't have an account?
+<p style="margin-top:15px;">  
+  Don't have an account?  
 
-      <button
-        id="openSignup"
-        class="linkbtn"
-        type="button"
-      >
-        Sign Up
-      </button>
-    </p>
+  <button  
+    id="openSignup"  
+    class="linkbtn"  
+    type="button"  
+  >  
+    Sign Up  
+  </button>  
+</p>
 
-  `);
+`);
 
+$("loginForm").onsubmit =
+async event => {
 
-  $("loginForm").onsubmit =
-    async event => {
+event.preventDefault();  
 
-      event.preventDefault();
+  try {  
 
-      try {
+    await signInWithEmailAndPassword(  
+      auth,  
+      $("loginEmail").value.trim(),  
+      $("loginPassword").value  
+    );  
 
-        await signInWithEmailAndPassword(
-          auth,
-          $("loginEmail").value.trim(),
-          $("loginPassword").value
-        );
+    closeModal();  
 
-        closeModal();
+    toast("Login successful.");  
 
-        toast("Login successful.");
+  } catch (error) {  
 
-      } catch (error) {
+    console.error(error);  
 
-        console.error(error);
+    toast(  
+      error.message ||  
+      "Login failed."  
+    );  
 
-        toast(
-          error.message ||
-          "Login failed."
-        );
+  }  
 
-      }
+};
 
-    };
+$("googleLogin").onclick =
+async () => {
 
+try {  
 
-  $("googleLogin").onclick =
-    async () => {
+    await signInWithPopup(  
+      auth,  
+      provider  
+    );  
 
-      try {
+    closeModal();  
 
-        await signInWithPopup(
-          auth,
-          provider
-        );
+    toast("Google login successful.");  
 
-        closeModal();
+  } catch (error) {  
 
-        toast("Google login successful.");
+    console.error(error);  
 
-      } catch (error) {
+    toast(  
+      error.message ||  
+      "Google login failed."  
+    );  
 
-        console.error(error);
+  }  
 
-        toast(
-          error.message ||
-          "Google login failed."
-        );
+};
 
-      }
-
-    };
-
-
-  $("openSignup").onclick = openSignup;
+$("openSignup").onclick = openSignup;
 
 }
 
-
 /* =========================
-   SIGN UP
+SIGN UP
 ========================= */
 
 function openSignup() {
 
-  openModal(`
+openModal(`
 
-    <h2>Create Account</h2>
+<h2>Create Account</h2>  
 
-    <form id="signupForm" class="formgrid">
+<form id="signupForm" class="formgrid">  
 
-      <input
-        id="signupName"
-        placeholder="Full name"
-        required
-      >
+  <input  
+    id="signupName"  
+    placeholder="Full name"  
+    required  
+  >  
 
-      <input
-        id="signupEmail"
-        type="email"
-        placeholder="Email"
-        required
-      >
+  <input  
+    id="signupEmail"  
+    type="email"  
+    placeholder="Email"  
+    required  
+  >  
 
-      <input
-        id="signupPassword"
-        type="password"
-        placeholder="Password"
-        minlength="6"
-        required
-      >
+  <input  
+    id="signupPassword"  
+    type="password"  
+    placeholder="Password"  
+    minlength="6"  
+    required  
+  >  
 
-      <input
-        id="signupMobile"
-        placeholder="Mobile number"
-      >
+  <input  
+    id="signupMobile"  
+    placeholder="Mobile number"  
+  >  
 
-      <button
-        type="submit"
-        class="btn primary"
-      >
-        Create Account
-      </button>
+  <button  
+    type="submit"  
+    class="btn primary"  
+  >  
+    Create Account  
+  </button>  
 
-    </form>
+</form>
 
-  `);
+`);
 
+$("signupForm").onsubmit =
+async event => {
 
-  $("signupForm").onsubmit =
-    async event => {
+event.preventDefault();  
 
-      event.preventDefault();
+  try {  
 
-      try {
+    const name =  
+      $("signupName")  
+        .value  
+        .trim();  
 
-        const name =
-          $("signupName")
-            .value
-            .trim();
+    const email =  
+      $("signupEmail")  
+        .value  
+        .trim();  
 
-        const email =
-          $("signupEmail")
-            .value
-            .trim();
+    const password =  
+      $("signupPassword")  
+        .value;  
 
-        const password =
-          $("signupPassword")
-            .value;
-
-        const mobile =
-          $("signupMobile")
-            .value
-            .trim();
-
-
-        const credential =
-          await createUserWithEmailAndPassword(
-            auth,
-            email,
-            password
-          );
+    const mobile =  
+      $("signupMobile")  
+        .value  
+        .trim();  
 
 
-        await setDoc(
-          doc(
-            db,
-            "users",
-            credential.user.uid
-          ),
-          {
-            uid: credential.user.uid,
-            name,
-            email,
-            mobile,
-            walletBalance: 0,
-            role: "user",
-            createdAt: serverTimestamp()
-          },
-          {
-            merge: true
-          }
-        );
+    const credential =  
+      await createUserWithEmailAndPassword(  
+        auth,  
+        email,  
+        password  
+      );  
 
 
-        closeModal();
+    await setDoc(  
+      doc(  
+        db,  
+        "users",  
+        credential.user.uid  
+      ),  
+      {  
+        uid: credential.user.uid,  
+        name,  
+        email,  
+        mobile,  
+        walletBalance: 0,  
+        role: "user",  
+        createdAt: serverTimestamp()  
+      },  
+      {  
+        merge: true  
+      }  
+    );  
 
-        toast(
-          "Account created successfully."
-        );
 
-      } catch (error) {
+    closeModal();  
 
-        console.error(error);
+    toast(  
+      "Account created successfully."  
+    );  
 
-        toast(
-          error.message ||
-          "Signup failed."
-        );
+  } catch (error) {  
 
-      }
+    console.error(error);  
 
-    };
+    toast(  
+      error.message ||  
+      "Signup failed."  
+    );  
+
+  }  
+
+};
 
 }
 
-
 /* =========================
-   SAVE PROFILE
+SAVE PROFILE
 ========================= */
 
 async function saveProfile() {
 
-  if (!currentUser) {
+if (!currentUser) {
 
-    toast("Please login first.");
+toast("Please login first.");  
 
-    return;
-
-  }
-
-
-  const name =
-    $("profileName")?.value.trim() || "";
-
-  const mobile =
-    $("profileMobile")?.value.trim() || "";
-
-
-  try {
-
-    const userRef =
-      doc(
-        db,
-        "users",
-        currentUser.uid
-      );
-
-
-    const existing =
-      await getDoc(userRef);
-
-
-    if (existing.exists()) {
-
-      await setDoc(
-        userRef,
-        {
-          name,
-          mobile,
-          email:
-            currentUser.email || ""
-        },
-        {
-          merge: true
-        }
-      );
-
-    } else {
-
-      await setDoc(
-        userRef,
-        {
-          uid:
-            currentUser.uid,
-
-          name,
-
-          mobile,
-
-          email:
-            currentUser.email || "",
-
-          walletBalance: 0,
-
-          role: "user",
-
-          createdAt:
-            serverTimestamp()
-        }
-      );
-
-    }
-
-
-    toast("Profile saved.");
-
-  } catch (error) {
-
-    console.error(error);
-
-    toast(
-      error.message ||
-      "Unable to save profile."
-    );
-
-  }
+return;
 
 }
 
+const name =
+$("profileName")?.value.trim() || "";
+
+const mobile =
+$("profileMobile")?.value.trim() || "";
+
+try {
+
+const userRef =  
+  doc(  
+    db,  
+    "users",  
+    currentUser.uid  
+  );  
+
+
+const existing =  
+  await getDoc(userRef);  
+
+
+if (existing.exists()) {  
+
+  await setDoc(  
+    userRef,  
+    {  
+      name,  
+      mobile,  
+      email:  
+        currentUser.email || ""  
+    },  
+    {  
+      merge: true  
+    }  
+  );  
+
+} else {  
+
+  await setDoc(  
+    userRef,  
+    {  
+      uid:  
+        currentUser.uid,  
+
+      name,  
+
+      mobile,  
+
+      email:  
+        currentUser.email || "",  
+
+      walletBalance: 0,  
+
+      role: "user",  
+
+      createdAt:  
+        serverTimestamp()  
+    }  
+  );  
+
+}  
+
+
+toast("Profile saved.");
+
+} catch (error) {
+
+console.error(error);  
+
+toast(  
+  error.message ||  
+  "Unable to save profile."  
+);
+
+}
+
+}
 
 /* =========================
-   AUTH STATE
+AUTH STATE
 ========================= */
 
 onAuthStateChanged(
-  auth,
-  async user => {
+auth,
+async user => {
 
-    currentUser = user || null;
-
-
-    if (authBtn) {
-
-      authBtn.textContent =
-        currentUser
-          ? "Profile"
-          : "Login";
-
-    }
+currentUser = user || null;  
 
 
-    if (currentUser) {
+if (authBtn) {  
 
-      try {
+  authBtn.textContent =  
+    currentUser  
+      ? "Profile"  
+      : "Login";  
 
-        const userRef =
-          doc(
-            db,
-            "users",
-            currentUser.uid
-          );
+}  
 
 
-        const snap =
-          await getDoc(userRef);
+if (currentUser) {  
+
+  try {  
+
+    const userRef =  
+      doc(  
+        db,  
+        "users",  
+        currentUser.uid  
+      );  
 
 
-        if (!snap.exists()) {
-
-          await setDoc(
-            userRef,
-            {
-              uid:
-                currentUser.uid,
-
-              name:
-                currentUser.displayName ||
-                "",
-
-              email:
-                currentUser.email ||
-                "",
-
-              walletBalance: 0,
-
-              role: "user",
-
-              createdAt:
-                serverTimestamp()
-            }
-          );
-
-        }
-
-      } catch (error) {
-
-        console.error(
-          "User profile error:",
-          error
-        );
-
-      }
+    const snap =  
+      await getDoc(userRef);  
 
 
-      startMyTournamentListener();
+    if (!snap.exists()) {  
 
-    } else {
+      await setDoc(  
+        userRef,  
+        {  
+          uid:  
+            currentUser.uid,  
 
-      if (myTournamentUnsubscribe) {
+          name:  
+            currentUser.displayName ||  
+            "",  
 
-        myTournamentUnsubscribe();
+          email:  
+            currentUser.email ||  
+            "",  
 
-        myTournamentUnsubscribe = null;
+          walletBalance: 0,  
 
-      }
+          role: "user",  
 
-    }
+          createdAt:  
+            serverTimestamp()  
+        }  
+      );  
+
+    }  
+
+  } catch (error) {  
+
+    console.error(  
+      "User profile error:",  
+      error  
+    );  
+
+  }  
 
 
-    if (appStarted) {
+  startMyTournamentListener();  
 
-      route();
+} else {  
 
-    }
+  if (myTournamentUnsubscribe) {  
 
-  }
+    myTournamentUnsubscribe();  
+
+    myTournamentUnsubscribe = null;  
+
+  }  
+
+}  
+
+
+if (appStarted) {  
+
+  route();  
+
+}
+
+}
 );
 
-
 /* =========================
-   LOAD TOURNAMENTS
+LOAD TOURNAMENTS
 ========================= */
 
 function loadTournaments() {
 
-  if (tournamentUnsubscribe) {
+if (tournamentUnsubscribe) {
 
-    tournamentUnsubscribe();
-
-  }
-
-
-  tournamentUnsubscribe =
-    onSnapshot(
-      collection(db, "tournaments"),
-
-      snapshot => {
-
-        tournaments =
-          snapshot.docs.map(
-            item => ({
-              id: item.id,
-              ...item.data()
-            })
-          );
-
-
-        tournaments.sort(
-          (a, b) =>
-            timestampMs(
-              a.matchDateTime ||
-              a.matchDate ||
-              a.date ||
-              a.createdAt
-            ) -
-            timestampMs(
-              b.matchDateTime ||
-              b.matchDate ||
-              b.date ||
-              b.createdAt
-            )
-        );
-
-
-        tournamentsLoaded = true;
-
-        route();
-
-      },
-
-      error => {
-
-        console.error(
-          "Tournament listener error:",
-          error
-        );
-
-        tournamentsLoaded = true;
-
-        toast(
-          "Unable to load tournaments."
-        );
-
-      }
-    );
+tournamentUnsubscribe();
 
 }
 
+tournamentUnsubscribe =
+onSnapshot(
+collection(db, "tournaments"),
+
+snapshot => {  
+
+    tournaments =  
+      snapshot.docs.map(  
+        item => ({  
+          id: item.id,  
+          ...item.data()  
+        })  
+      );  
+
+
+    tournaments.sort(  
+      (a, b) =>  
+        timestampMs(  
+          a.matchDateTime ||  
+          a.matchDate ||  
+          a.date ||  
+          a.createdAt  
+        ) -  
+        timestampMs(  
+          b.matchDateTime ||  
+          b.matchDate ||  
+          b.date ||  
+          b.createdAt  
+        )  
+    );  
+
+
+    tournamentsLoaded = true;  
+
+    route();  
+
+  },  
+
+  error => {  
+
+    console.error(  
+      "Tournament listener error:",  
+      error  
+    );  
+
+    tournamentsLoaded = true;  
+
+    toast(  
+      "Unable to load tournaments."  
+    );  
+
+  }  
+);
+
+}
 
 /* =========================
-   PUBLIC SETTINGS
+PUBLIC SETTINGS
 ========================= */
 
 async function loadPublicSettings() {
 
-  try {
+try {
 
-    const snap =
-      await getDoc(
-        doc(
-          db,
-          "adminSettings",
-          "public"
-        )
-      );
-
-
-    if (!snap.exists()) {
-
-      return;
-
-    }
+const snap =  
+  await getDoc(  
+    doc(  
+      db,  
+      "adminSettings",  
+      "public"  
+    )  
+  );  
 
 
-    publicSettings =
-      snap.data() || {};
+if (!snap.exists()) {  
+
+  return;  
+
+}  
 
 
-    if (
-      publicSettings.logoUrl &&
-      isHttpUrl(
-        publicSettings.logoUrl
-      )
-    ) {
-
-      const logos =
-        document.querySelectorAll(
-          ".site-logo"
-        );
+publicSettings =  
+  snap.data() || {};  
 
 
-      logos.forEach(
-        logo => {
+if (  
+  publicSettings.logoUrl &&  
+  isHttpUrl(  
+    publicSettings.logoUrl  
+  )  
+) {  
 
-          logo.src =
-            publicSettings.logoUrl;
-
-        }
-      );
-
-    }
-
-
-    if (
-      publicSettings.splashUrl &&
-      isHttpUrl(
-        publicSettings.splashUrl
-      )
-    ) {
-
-      const splash =
-        $("splashImage");
+  const logos =  
+    document.querySelectorAll(  
+      ".site-logo"  
+    );  
 
 
-      if (splash) {
+  logos.forEach(  
+    logo => {  
 
-        splash.src =
-          publicSettings.splashUrl;
+      logo.src =  
+        publicSettings.logoUrl;  
 
-      }
+    }  
+  );  
 
-    }
+}  
 
-  } catch (error) {
 
-    console.error(
-      "Public settings error:",
-      error
-    );
+if (  
+  publicSettings.splashUrl &&  
+  isHttpUrl(  
+    publicSettings.splashUrl  
+  )  
+) {  
 
-  }
+  const splash =  
+    $("splashImage");  
+
+
+  if (splash) {  
+
+    splash.src =  
+      publicSettings.splashUrl;  
+
+  }  
 
 }
 
+} catch (error) {
+
+console.error(  
+  "Public settings error:",  
+  error  
+);
+
+}
+
+}
 
 /* =========================
-   JOINED IDS
+JOINED IDS
 ========================= */
 
 async function joinedIds() {
 
-  if (!currentUser) {
+if (!currentUser) {
 
-    return new Set();
-
-  }
-
-
-  try {
-
-    const q =
-      query(
-        collection(
-          db,
-          "tournamentParticipants"
-        ),
-
-        where(
-          "uid",
-          "==",
-          currentUser.uid
-        )
-      );
-
-
-    const snap =
-      await getDocs(q);
-
-
-    return new Set(
-      snap.docs.map(
-        d =>
-          d.data().tournamentId
-      )
-    );
-
-  } catch (error) {
-
-    console.error(
-      "Joined IDs error:",
-      error
-    );
-
-    return new Set();
-
-  }
+return new Set();
 
 }
 
+try {
+
+const q =  
+  query(  
+    collection(  
+      db,  
+      "tournamentParticipants"  
+    ),  
+
+    where(  
+      "uid",  
+      "==",  
+      currentUser.uid  
+    )  
+  );  
+
+
+const snap =  
+  await getDocs(q);  
+
+
+return new Set(  
+  snap.docs.map(  
+    d =>  
+      d.data().tournamentId  
+  )  
+);
+
+} catch (error) {
+
+console.error(  
+  "Joined IDs error:",  
+  error  
+);  
+
+return new Set();
+
+}
+
+}
 
 /* =========================
-   HOME
+HOME
 ========================= */
 
 async function renderHome() {
 
-  const appEl = $("app");
+const appEl = $("app");
 
-  if (!appEl) return;
+if (!appEl) return;
 
+if (!tournamentsLoaded) {
 
-  if (!tournamentsLoaded) {
+appEl.innerHTML = `  
+  <div class="loading">  
+    Loading tournaments...  
+  </div>  
+`;  
 
-    appEl.innerHTML = `
-      <div class="loading">
-        Loading tournaments...
-      </div>
-    `;
-
-    return;
-
-  }
-
-
-  const joined =
-    await joinedIds();
-
-
-  const active =
-    tournaments.filter(
-      tournament =>
-        !tournament.status ||
-        tournament.status === "active" ||
-        tournament.status === "upcoming"
-    );
-
-
-  if (!active.length) {
-
-    appEl.innerHTML = `
-      <div class="empty">
-        No tournaments available.
-      </div>
-    `;
-
-    return;
-
-  }
-
-
-  appEl.innerHTML = `
-
-    <div class="section-title">
-
-      <h1>
-        BGMI Tournaments
-      </h1>
-
-      <p>
-        Join and win exciting prizes.
-      </p>
-
-    </div>
-
-
-    <div class="tournament-grid">
-
-      ${
-        active
-          .map(
-            tournament =>
-              card(
-                tournament,
-                joined.has(
-                  tournament.id
-                )
-              )
-          )
-          .join("")
-      }
-
-    </div>
-
-  `;
+return;
 
 }
 
+const joined =
+await joinedIds();
+
+const active =
+tournaments.filter(
+tournament =>
+!tournament.status ||
+tournament.status === "active" ||
+tournament.status === "upcoming"
+);
+
+if (!active.length) {
+
+appEl.innerHTML = `  
+  <div class="empty">  
+    No tournaments available.  
+  </div>  
+`;  
+
+return;
+
+}
+
+appEl.innerHTML = `
+
+<div class="section-title">  
+
+  <h1>  
+    BGMI Tournaments  
+  </h1>  
+
+  <p>  
+    Join and win exciting prizes.  
+  </p>  
+
+</div>  
+
+
+<div class="tournament-grid">  
+
+  ${  
+    active  
+      .map(  
+        tournament =>  
+          card(  
+            tournament,  
+            joined.has(  
+              tournament.id  
+            )  
+          )  
+      )  
+      .join("")  
+  }  
+
+</div>
+
+`;
+
+}
 
 /* =========================
-   TOURNAMENT CARD
+TOURNAMENT CARD
 ========================= */
 
 function card(
-  tournament,
-  joined = false
+tournament,
+joined = false
 ) {
 
-  const firstPrize =
-    getFirstPrize(tournament);
+const firstPrize =
+getFirstPrize(tournament);
+
+const mode =
+tournament.mode ||
+tournament.gameMode ||
+"Squad";
+
+const slots =
+tournament.slots ||
+tournament.maxSlots ||
+tournament.totalSlots ||
+0;
+
+const joinedCount =
+Number(
+tournament.joinedCount || 0
+);
+
+const matchDate =
+tournament.matchDateTime ||
+tournament.matchDate ||
+tournament.date;
+
+const perKill =
+Number(
+tournament.perKill ??
+tournament.perKillPrize ??
+tournament.killPrize ??
+0
+);
+
+const free =
+isTournamentFree(
+tournament
+);
+
+return `
+
+<article class="tournament-card">  
+
+  ${  
+    tournament.imageUrl &&  
+    isHttpUrl(  
+      tournament.imageUrl  
+    )  
+      ? `  
+        <img  
+          class="tournament-image"  
+          src="${esc(  
+            tournament.imageUrl  
+          )}"  
+          alt="${esc(  
+            tournament.name  
+          )}"  
+        >  
+      `  
+      : ""  
+  }  
 
 
-  const mode =
-    tournament.mode ||
-    tournament.gameMode ||
-    "Squad";
+  <div class="tournament-content">  
+
+    <h3>  
+      ${esc(tournament.name)}  
+    </h3>  
 
 
-  const slots =
-    tournament.slots ||
-    tournament.maxSlots ||
-    tournament.totalSlots ||
-    0;
+    <div class="prize">  
+      🏆 ₹${esc(firstPrize)}  
+    </div>  
 
 
-  const joinedCount =
-    Number(
-      tournament.joinedCount || 0
-    );
+    <div class="meta">  
+      🎮 ${esc(mode)}  
+    </div>  
 
 
-  const matchDate =
-    tournament.matchDateTime ||
-    tournament.matchDate ||
-    tournament.date;
+    <div class="meta">  
+      👥 ${joinedCount}/${slots}  
+    </div>  
 
 
-  const perKill =
-    Number(
-      tournament.perKill ??
-      tournament.perKillPrize ??
-      tournament.killPrize ??
-      0
-    );
+    <div class="meta">  
+      📅 ${esc(fmt(matchDate))}  
+    </div>  
 
 
-  const free =
-    isTournamentFree(
-      tournament
-    );
+    <div class="meta">  
+      🎯 Kill ₹${esc(perKill)}  
+    </div>  
 
 
-  return `
+    <div class="entry">  
 
-    <article class="tournament-card">
+      ${  
+        free  
+          ? "FREE"  
+          : "Entry ₹" +  
+            Number(  
+              tournament.entryFee ||  
+              0  
+            )  
+      }  
 
-      ${
-        tournament.imageUrl &&
-        isHttpUrl(
-          tournament.imageUrl
-        )
-          ? `
-            <img
-              class="tournament-image"
-              src="${esc(
-                tournament.imageUrl
-              )}"
-              alt="${esc(
-                tournament.name
-              )}"
-            >
-          `
-          : ""
-      }
+    </div>  
 
 
-      <div class="tournament-content">
+    ${  
+      joined  
+        ? `  
+          <button  
+            class="btn success"  
+            disabled  
+          >  
+            Joined  
+          </button>  
+        `  
+        : `  
+          <button  
+            class="btn primary"  
+            onclick="showDetails('${esc(  
+              tournament.id  
+            )}')"  
+          >  
+            View Details  
+          </button>  
+        `  
+    }  
 
-        <h3>
-          ${esc(tournament.name)}
-        </h3>
+  </div>  
 
+</article>
 
-        <div class="prize">
-          🏆 ₹${esc(firstPrize)}
-        </div>
-
-
-        <div class="meta">
-          🎮 ${esc(mode)}
-        </div>
-
-
-        <div class="meta">
-          👥 ${joinedCount}/${slots}
-        </div>
-
-
-        <div class="meta">
-          📅 ${esc(fmt(matchDate))}
-        </div>
-
-
-        <div class="meta">
-          🎯 Kill ₹${esc(perKill)}
-        </div>
-
-
-        <div class="entry">
-
-          ${
-            free
-              ? "FREE"
-              : "Entry ₹" +
-                Number(
-                  tournament.entryFee ||
-                  0
-                )
-          }
-
-        </div>
-
-
-        ${
-          joined
-            ? `
-              <button
-                class="btn success"
-                disabled
-              >
-                Joined
-              </button>
-            `
-            : `
-              <button
-                class="btn primary"
-                onclick="showDetails('${esc(
-                  tournament.id
-                )}')"
-              >
-                View Details
-              </button>
-            `
-        }
-
-      </div>
-
-    </article>
-
-  `;
+`;
 
 }
 
-
 /* =========================
-   TOURNAMENT DETAILS
+TOURNAMENT DETAILS
 ========================= */
 
 window.showDetails =
-  function (id) {
+function (id) {
 
-    const tournament =
-      tournaments.find(
-        item =>
-          item.id === id
-      );
-
-
-    if (!tournament) {
-
-      toast(
-        "Tournament not found."
-      );
-
-      return;
-
-    }
+const tournament =  
+  tournaments.find(  
+    item =>  
+      item.id === id  
+  );  
 
 
-    details(tournament);
+if (!tournament) {  
 
-  };
+  toast(  
+    "Tournament not found."  
+  );  
 
+  return;  
+
+}  
+
+
+details(tournament);
+
+};
 
 function details(tournament) {
 
-  const firstPrize =
-    getFirstPrize(tournament);
+const firstPrize =
+getFirstPrize(tournament);
+
+const mode =
+tournament.mode ||
+tournament.gameMode ||
+"Squad";
+
+const slots =
+tournament.slots ||
+tournament.maxSlots ||
+tournament.totalSlots ||
+0;
+
+const joinedCount =
+Number(
+tournament.joinedCount || 0
+);
+
+const perKill =
+Number(
+tournament.perKill ??
+tournament.perKillPrize ??
+tournament.killPrize ??
+0
+);
+
+const entryFee =
+Number(
+tournament.entryFee || 0
+);
+
+const matchDate =
+tournament.matchDateTime ||
+tournament.matchDate ||
+tournament.date;
+
+openModal(`
+
+<h2>  
+  ${esc(tournament.name)}  
+</h2>  
 
 
-  const mode =
-    tournament.mode ||
-    tournament.gameMode ||
-    "Squad";
+<div class="details-list">  
+
+  <p>  
+    🏆 First Prize:  
+    <strong>  
+      ₹${esc(firstPrize)}  
+    </strong>  
+  </p>  
 
 
-  const slots =
-    tournament.slots ||
-    tournament.maxSlots ||
-    tournament.totalSlots ||
-    0;
+  <p>  
+    💰 Total Prize:  
+    <strong>  
+      ₹${esc(  
+        tournament.totalPrize ||  
+        tournament.prizeTotal ||  
+        tournament.prizePool ||  
+        0  
+      )}  
+    </strong>  
+  </p>  
 
 
-  const joinedCount =
-    Number(
-      tournament.joinedCount || 0
-    );
+  <p>  
+    🎮 Mode:  
+    ${esc(mode)}  
+  </p>  
 
 
-  const perKill =
-    Number(
-      tournament.perKill ??
-      tournament.perKillPrize ??
-      tournament.killPrize ??
-      0
-    );
+  <p>  
+    👥 Slots:  
+    ${joinedCount}/${slots}  
+  </p>  
 
 
-  const entryFee =
-    Number(
-      tournament.entryFee || 0
-    );
+  <p>  
+    📅 Registration End:  
+    ${esc(  
+      fmt(  
+        tournament.registrationEnd ||  
+        tournament.regEnd  
+      )  
+    )}  
+  </p>  
 
 
-  const matchDate =
-    tournament.matchDateTime ||
-    tournament.matchDate ||
-    tournament.date;
+  <p>  
+    🕐 Match Date:  
+    ${esc(  
+      fmt(matchDate)  
+    )}  
+  </p>  
 
 
-  openModal(`
-
-    <h2>
-      ${esc(tournament.name)}
-    </h2>
-
-
-    <div class="details-list">
-
-      <p>
-        🏆 First Prize:
-        <strong>
-          ₹${esc(firstPrize)}
-        </strong>
-      </p>
+  <p>  
+    💵 Entry Fee:  
+    ${  
+      entryFee <= 0  
+        ? "FREE"  
+        : "₹" + entryFee  
+    }  
+  </p>  
 
 
-      <p>
-        💰 Total Prize:
-        <strong>
-          ₹${esc(
-            tournament.totalPrize ||
-            tournament.prizeTotal ||
-            tournament.prizePool ||
-            0
-          )}
-        </strong>
-      </p>
+  <p>  
+    🎯 Per Kill:  
+    ₹${esc(perKill)}  
+  </p>  
+
+</div>  
 
 
-      <p>
-        🎮 Mode:
-        ${esc(mode)}
-      </p>
+${  
+  tournament.description  
+    ? `  
+      <div class="description">  
+        ${esc(  
+          tournament.description  
+        )}  
+      </div>  
+    `  
+    : ""  
+}  
 
 
-      <p>
-        👥 Slots:
-        ${joinedCount}/${slots}
-      </p>
+<div class="warning">  
+  ⚠️ Never share your OTP,  
+  password or Firebase account  
+  details with anyone.  
+</div>  
 
 
-      <p>
-        📅 Registration End:
-        ${esc(
-          fmt(
-            tournament.registrationEnd ||
-            tournament.regEnd
-          )
-        )}
-      </p>
+<button  
+  class="btn primary"  
+  style="width:100%;margin-top:15px;"  
+  onclick="joinTournament('${esc(  
+    tournament.id  
+  )}')"  
+>  
+  JOIN NOW  
+</button>
 
-
-      <p>
-        🕐 Match Date:
-        ${esc(
-          fmt(matchDate)
-        )}
-      </p>
-
-
-      <p>
-        💵 Entry Fee:
-        ${
-          entryFee <= 0
-            ? "FREE"
-            : "₹" + entryFee
-        }
-      </p>
-
-
-      <p>
-        🎯 Per Kill:
-        ₹${esc(perKill)}
-      </p>
-
-    </div>
-
-
-    ${
-      tournament.description
-        ? `
-          <div class="description">
-            ${esc(
-              tournament.description
-            )}
-          </div>
-        `
-        : ""
-    }
-
-
-    <div class="warning">
-      ⚠️ Never share your OTP,
-      password or Firebase account
-      details with anyone.
-    </div>
-
-
-    <button
-      class="btn primary"
-      style="width:100%;margin-top:15px;"
-      onclick="joinTournament('${esc(
-        tournament.id
-      )}')"
-    >
-      JOIN NOW
-    </button>
-
-  `);
+`);
 
 }
 
-
 /* =========================
-   PRIZE ROWS
+PRIZE ROWS
 ========================= */
 
 function prizeRows(tournament) {
 
-  const prizes =
-    tournament.prizeDistribution ||
-    tournament.prizes ||
-    [];
+const prizes =
+tournament.prizeDistribution ||
+tournament.prizes ||
+[];
 
+if (!Array.isArray(prizes)) {
 
-  if (!Array.isArray(prizes)) {
-
-    return "";
-
-  }
-
-
-  return prizes
-    .map(
-      (item, index) => {
-
-        const amount =
-          typeof item === "object"
-            ? (
-                item.amount ??
-                item.prize ??
-                item.value ??
-                0
-              )
-            : item;
-
-
-        return `
-
-          <div class="prize-row">
-
-            <span>
-              ${index + 1}
-            </span>
-
-            <strong>
-              ₹${esc(amount)}
-            </strong>
-
-          </div>
-
-        `;
-
-      }
-    )
-    .join("");
+return "";
 
 }
 
+return prizes
+.map(
+(item, index) => {
+
+const amount =  
+      typeof item === "object"  
+        ? (  
+            item.amount ??  
+            item.prize ??  
+            item.value ??  
+            0  
+          )  
+        : item;  
+
+
+    return `  
+
+      <div class="prize-row">  
+
+        <span>  
+          ${index + 1}  
+        </span>  
+
+        <strong>  
+          ₹${esc(amount)}  
+        </strong>  
+
+      </div>  
+
+    `;  
+
+  }  
+)  
+.join("");
+
+}
 
 /* =========================
-   START MY TOURNAMENT LISTENER
+START MY TOURNAMENT LISTENER
 ========================= */
 
 function startMyTournamentListener() {
 
-  if (!currentUser) return;
+if (!currentUser) return;
 
+if (myTournamentUnsubscribe) {
 
-  if (myTournamentUnsubscribe) {
-
-    myTournamentUnsubscribe();
-
-  }
-
-
-  const q =
-    query(
-      collection(
-        db,
-        "tournamentParticipants"
-      ),
-
-      where(
-        "uid",
-        "==",
-        currentUser.uid
-      )
-    );
-
-
-  myTournamentUnsubscribe =
-    onSnapshot(
-      q,
-
-      snapshot => {
-
-        window.myTournamentDocs =
-          snapshot.docs.map(
-            item => ({
-              id: item.id,
-              ...item.data()
-            })
-          );
-
-
-        if (
-          location.hash ===
-          "#my-tournaments"
-        ) {
-
-          renderMyTournaments();
-
-        }
-
-      },
-
-      error => {
-
-        console.error(
-          "My tournament listener:",
-          error
-        );
-
-      }
-    );
+myTournamentUnsubscribe();
 
 }
 
+const q =
+query(
+collection(
+db,
+"tournamentParticipants"
+),
+
+where(  
+    "uid",  
+    "==",  
+    currentUser.uid  
+  )  
+);
+
+myTournamentUnsubscribe =
+onSnapshot(
+q,
+
+snapshot => {  
+
+    window.myTournamentDocs =  
+      snapshot.docs.map(  
+        item => ({  
+          id: item.id,  
+          ...item.data()  
+        })  
+      );  
+
+
+    if (  
+      location.hash ===  
+      "#my-tournaments"  
+    ) {  
+
+      renderMyTournaments();  
+
+    }  
+
+  },  
+
+  error => {  
+
+    console.error(  
+      "My tournament listener:",  
+      error  
+    );  
+
+  }  
+);
+
+}
 
 /* =========================
-   LOAD MY TOURNAMENTS
+LOAD MY TOURNAMENTS
 ========================= */
 
 async function loadMyTournaments() {
 
-  if (!currentUser) {
+if (!currentUser) {
 
-    return [];
-
-  }
-
-
-  try {
-
-    const q =
-      query(
-        collection(
-          db,
-          "tournamentParticipants"
-        ),
-
-        where(
-          "uid",
-          "==",
-          currentUser.uid
-        )
-      );
-
-
-    const snap =
-      await getDocs(q);
-
-
-    return snap.docs.map(
-      item => ({
-        id: item.id,
-        ...item.data()
-      })
-    );
-
-  } catch (error) {
-
-    console.error(
-      "Load my tournaments:",
-      error
-    );
-
-    return [];
-
-  }
+return [];
 
 }
 
+try {
+
+const q =  
+  query(  
+    collection(  
+      db,  
+      "tournamentParticipants"  
+    ),  
+
+    where(  
+      "uid",  
+      "==",  
+      currentUser.uid  
+    )  
+  );  
+
+
+const snap =  
+  await getDocs(q);  
+
+
+return snap.docs.map(  
+  item => ({  
+    id: item.id,  
+    ...item.data()  
+  })  
+);
+
+} catch (error) {
+
+console.error(  
+  "Load my tournaments:",  
+  error  
+);  
+
+return [];
+
+}
+
+}
 
 /* =========================
-   MY TOURNAMENTS
+MY TOURNAMENTS
 ========================= */
 
 async function renderMyTournaments() {
 
-  const appEl = $("app");
+const appEl = $("app");
 
-  if (!appEl) return;
+if (!appEl) return;
 
+if (!currentUser) {
 
-  if (!currentUser) {
+openLogin();  
 
-    openLogin();
-
-    return;
-
-  }
-
-
-  const joined =
-    await loadMyTournaments();
-
-
-  if (!joined.length) {
-
-    appEl.innerHTML = `
-      <div class="empty">
-        You have not joined
-        any tournament yet.
-      </div>
-    `;
-
-    return;
-
-  }
-
-
-  const cards = [];
-
-
-  for (const participant of joined) {
-
-    const tournament =
-      tournaments.find(
-        t =>
-          t.id ===
-          participant.tournamentId
-      );
-
-
-    if (!tournament) continue;
-
-
-    let room = null;
-
-
-    try {
-
-      const roomSnap =
-        await getDoc(
-          doc(
-            db,
-            "roomCredentials",
-            tournament.id
-          )
-        );
-
-
-      if (roomSnap.exists()) {
-
-        room =
-          roomSnap.data();
-
-      }
-
-    } catch (error) {
-
-      console.error(
-        "Room credentials:",
-        error
-      );
-
-    }
-
-
-    cards.push(`
-
-      <article class="tournament-card">
-
-        <div class="tournament-content">
-
-          <h3>
-            ${esc(tournament.name)}
-          </h3>
-
-
-          <p>
-            👤 Character:
-            ${esc(
-              participant.characterName
-            )}
-          </p>
-
-
-          <p>
-            🆔 BGMI ID:
-            ${esc(
-              participant.bgmiId
-            )}
-          </p>
-
-
-          ${
-            room
-              ? `
-                <div class="room-box">
-
-                  <p>
-                    🎮 Room ID:
-                    <strong>
-                      ${esc(
-                        room.roomId ||
-                        "—"
-                      )}
-                    </strong>
-                  </p>
-
-
-                  <p>
-                    🔑 Password:
-                    <strong>
-                      ${esc(
-                        room.roomPassword ||
-                        room.password ||
-                        "—"
-                      )}
-                    </strong>
-                  </p>
-
-                </div>
-              `
-              : `
-                <p>
-                  ⏳ Room details will
-                  appear here when
-                  published.
-                </p>
-              `
-          }
-
-        </div>
-
-      </article>
-
-    `);
-
-  }
-
-
-  appEl.innerHTML = `
-
-    <div class="section-title">
-
-      <h1>
-        My Tournaments
-      </h1>
-
-    </div>
-
-
-    <div class="tournament-grid">
-
-      ${
-        cards.length
-          ? cards.join("")
-          : `
-            <div class="empty">
-              No tournament data found.
-            </div>
-          `
-      }
-
-    </div>
-
-  `;
+return;
 
 }
 
+const joined =
+await loadMyTournaments();
+
+if (!joined.length) {
+
+appEl.innerHTML = `  
+  <div class="empty">  
+    You have not joined  
+    any tournament yet.  
+  </div>  
+`;  
+
+return;
+
+}
+
+const cards = [];
+
+for (const participant of joined) {
+
+const tournament =  
+  tournaments.find(  
+    t =>  
+      t.id ===  
+      participant.tournamentId  
+  );  
+
+
+if (!tournament) continue;  
+
+
+let room = null;  
+
+
+try {  
+
+  const roomSnap =  
+    await getDoc(  
+      doc(  
+        db,  
+        "roomCredentials",  
+        tournament.id  
+      )  
+    );  
+
+
+  if (roomSnap.exists()) {  
+
+    room =  
+      roomSnap.data();  
+
+  }  
+
+} catch (error) {  
+
+  console.error(  
+    "Room credentials:",  
+    error  
+  );  
+
+}  
+
+
+cards.push(`  
+
+  <article class="tournament-card">  
+
+    <div class="tournament-content">  
+
+      <h3>  
+        ${esc(tournament.name)}  
+      </h3>  
+
+
+      <p>  
+        👤 Character:  
+        ${esc(  
+          participant.characterName  
+        )}  
+      </p>  
+
+
+      <p>  
+        🆔 BGMI ID:  
+        ${esc(  
+          participant.bgmiId  
+        )}  
+      </p>  
+
+
+      ${  
+        room  
+          ? `  
+            <div class="room-box">  
+
+              <p>  
+                🎮 Room ID:  
+                <strong>  
+                  ${esc(  
+                    room.roomId ||  
+                    "—"  
+                  )}  
+                </strong>  
+              </p>  
+
+
+              <p>  
+                🔑 Password:  
+                <strong>  
+                  ${esc(  
+                    room.roomPassword ||  
+                    room.password ||  
+                    "—"  
+                  )}  
+                </strong>  
+              </p>  
+
+            </div>  
+          `  
+          : `  
+            <p>  
+              ⏳ Room details will  
+              appear here when  
+              published.  
+            </p>  
+          `  
+      }  
+
+    </div>  
+
+  </article>  
+
+`);
+
+}
+
+appEl.innerHTML = `
+
+<div class="section-title">  
+
+  <h1>  
+    My Tournaments  
+  </h1>  
+
+</div>  
+
+
+<div class="tournament-grid">  
+
+  ${  
+    cards.length  
+      ? cards.join("")  
+      : `  
+        <div class="empty">  
+          No tournament data found.  
+        </div>  
+      `  
+  }  
+
+</div>
+
+`;
+
+}
 
 /* =========================
-   PROFILE
+PROFILE
 ========================= */
 
 async function renderProfile() {
 
-  if (!currentUser) {
+if (!currentUser) {
 
-    openLogin();
+openLogin();  
 
-    return;
-
-  }
-
-
-  let profile = {};
-
-
-  try {
-
-    const snap =
-      await getDoc(
-        doc(
-          db,
-          "users",
-          currentUser.uid
-        )
-      );
-
-
-    if (snap.exists()) {
-
-      profile =
-        snap.data() || {};
-
-    }
-
-  } catch (error) {
-
-    console.error(error);
-
-  }
-
-
-  const wallet =
-    Number(
-      profile.walletBalance || 0
-    );
-
-
-  openModal(`
-
-    <h2>My Profile</h2>
-
-
-    <div class="wallet-box">
-
-      <div>
-        Wallet Balance
-      </div>
-
-      <strong>
-        ₹${wallet.toFixed(2)}
-      </strong>
-
-    </div>
-
-
-    <form
-      id="profileForm"
-      class="formgrid"
-    >
-
-      <input
-        id="profileName"
-        value="${esc(
-          profile.name ||
-          currentUser.displayName ||
-          ""
-        )}"
-        placeholder="Name"
-      >
-
-
-      <input
-        id="profileMobile"
-        value="${esc(
-          profile.mobile || ""
-        )}"
-        placeholder="Mobile number"
-      >
-
-
-      <button
-        class="btn primary"
-        type="submit"
-      >
-        Save Profile
-      </button>
-
-    </form>
-
-
-    <button
-      class="btn"
-      style="width:100%;margin-top:10px;"
-      onclick="addMoney()"
-    >
-      💰 Add Money
-    </button>
-
-
-    <button
-      class="btn"
-      style="width:100%;margin-top:10px;"
-      onclick="transactions()"
-    >
-      📜 Transactions
-    </button>
-
-
-    <button
-      class="btn"
-      style="width:100%;margin-top:10px;"
-      onclick="location.hash='my-tournaments';closeModal();route();"
-    >
-      🏆 Joined Tournaments
-    </button>
-
-
-    <button
-      class="btn danger"
-      style="width:100%;margin-top:10px;"
-      onclick="logoutUser()"
-    >
-      Logout
-    </button>
-
-  `);
-
-
-  $("profileForm").onsubmit =
-    async event => {
-
-      event.preventDefault();
-
-      await saveProfile();
-
-    };
+return;
 
 }
 
+let profile = {};
+
+try {
+
+const snap =  
+  await getDoc(  
+    doc(  
+      db,  
+      "users",  
+      currentUser.uid  
+    )  
+  );  
+
+
+if (snap.exists()) {  
+
+  profile =  
+    snap.data() || {};  
+
+}
+
+} catch (error) {
+
+console.error(error);
+
+}
+
+const wallet =
+Number(
+profile.walletBalance || 0
+);
+
+openModal(`
+
+<h2>My Profile</h2>  
+
+
+<div class="wallet-box">  
+
+  <div>  
+    Wallet Balance  
+  </div>  
+
+  <strong>  
+    ₹${wallet.toFixed(2)}  
+  </strong>  
+
+</div>  
+
+
+<form  
+  id="profileForm"  
+  class="formgrid"  
+>  
+
+  <input  
+    id="profileName"  
+    value="${esc(  
+      profile.name ||  
+      currentUser.displayName ||  
+      ""  
+    )}"  
+    placeholder="Name"  
+  >  
+
+
+  <input  
+    id="profileMobile"  
+    value="${esc(  
+      profile.mobile || ""  
+    )}"  
+    placeholder="Mobile number"  
+  >  
+
+
+  <button  
+    class="btn primary"  
+    type="submit"  
+  >  
+    Save Profile  
+  </button>  
+
+</form>  
+
+
+<button  
+  class="btn"  
+  style="width:100%;margin-top:10px;"  
+  onclick="addMoney()"  
+>  
+  💰 Add Money  
+</button>  
+
+
+<button  
+  class="btn"  
+  style="width:100%;margin-top:10px;"  
+  onclick="transactions()"  
+>  
+  📜 Transactions  
+</button>  
+
+
+<button  
+  class="btn"  
+  style="width:100%;margin-top:10px;"  
+  onclick="location.hash='my-tournaments';closeModal();route();"  
+>  
+  🏆 Joined Tournaments  
+</button>  
+
+
+<button  
+  class="btn danger"  
+  style="width:100%;margin-top:10px;"  
+  onclick="logoutUser()"  
+>  
+  Logout  
+</button>
+
+`);
+
+$("profileForm").onsubmit =
+async event => {
+
+event.preventDefault();  
+
+  await saveProfile();  
+
+};
+
+}
 
 /* =========================
-   ADD MONEY
-   MANUAL PAYMENT
+ADD MONEY
+MANUAL PAYMENT
 ========================= */
 
 window.addMoney =
-  async function () {
+async function () {
 
-    /* ---------- LOGIN CHECK ---------- */
+/* ---------- LOGIN CHECK ---------- */  
 
-    if (!auth.currentUser) {
+if (!auth.currentUser) {  
 
-      toast("Please login first.");
+  toast("Please login first.");  
 
-      openLogin();
+  openLogin();  
 
-      return;
+  return;  
 
-    }
+}  
 
 
-    /* ---------- REFRESH USER ---------- */
+/* ---------- REFRESH USER ---------- */  
 
-    try {
+try {  
 
-      await auth.currentUser.reload();
+  await auth.currentUser.reload();  
 
-      currentUser =
-        auth.currentUser;
+  currentUser =  
+    auth.currentUser;  
 
-    } catch (error) {
+} catch (error) {  
 
-      console.error(
-        "Auth refresh error:",
-        error
-      );
+  console.error(  
+    "Auth refresh error:",  
+    error  
+  );  
 
-    }
+}  
 
 
-    if (!currentUser) {
+if (!currentUser) {  
 
-      toast(
-        "Login session expired. Please login again."
-      );
+  toast(  
+    "Login session expired. Please login again."  
+  );  
 
-      openLogin();
+  openLogin();  
 
-      return;
+  return;  
 
-    }
+}  
 
 
-    /* ---------- QR ---------- */
+/* ---------- QR ---------- */  
 
-    let qrHtml = `
+let qrHtml = `  
 
-      <div
-        style="
-          margin:15px 0;
-          padding:12px;
-          text-align:center;
-          background:#f5f5f5;
-          border-radius:12px;
-        "
-      >
+  <div  
+    style="  
+      margin:15px 0;  
+      padding:12px;  
+      text-align:center;  
+      background:#f5f5f5;  
+      border-radius:12px;  
+    "  
+  >  
 
-        <p style="margin:0;">
-          Payment QR not configured.
-        </p>
+    <p style="margin:0;">  
+      Payment QR not configured.  
+    </p>  
 
-      </div>
+  </div>  
 
-    `;
+`;  
 
 
-    if (
-      publicSettings.qrUrl &&
-      isHttpUrl(
-        publicSettings.qrUrl
-      )
-    ) {
+if (  
+  publicSettings.qrUrl &&  
+  isHttpUrl(  
+    publicSettings.qrUrl  
+  )  
+) {  
 
-      qrHtml = `
+  qrHtml = `  
 
-        <div
-          style="
-            text-align:center;
-            margin:15px 0;
-          "
-        >
+    <div  
+      style="  
+        text-align:center;  
+        margin:15px 0;  
+      "  
+    >  
 
-          <img
-            src="${esc(
-              publicSettings.qrUrl
-            )}"
-            alt="Payment QR"
-            style="
-              display:block;
-              max-width:220px;
-              width:100%;
-              height:auto;
-              margin:0 auto;
-              border-radius:10px;
-              background:#fff;
-            "
-            onerror="
-              this.style.display='none';
-              this.nextElementSibling.style.display='block';
-            "
-          >
+      <img  
+        src="${esc(  
+          publicSettings.qrUrl  
+        )}"  
+        alt="Payment QR"  
+        style="  
+          display:block;  
+          max-width:220px;  
+          width:100%;  
+          height:auto;  
+          margin:0 auto;  
+          border-radius:10px;  
+          background:#fff;  
+        "  
+        onerror="  
+          this.style.display='none';  
+          this.nextElementSibling.style.display='block';  
+        "  
+      >  
 
-          <div
-            style="
-              display:none;
-              padding:15px;
-              background:#fff3cd;
-              border-radius:10px;
-              margin-top:10px;
-            "
-          >
-            Payment QR image could not be loaded.
-          </div>
+      <div  
+        style="  
+          display:none;  
+          padding:15px;  
+          background:#fff3cd;  
+          border-radius:10px;  
+          margin-top:10px;  
+        "  
+      >  
+        Payment QR image could not be loaded.  
+      </div>  
 
-        </div>
+    </div>  
 
-      `;
+  `;  
 
-    }
+}  
 
 
-    /* ---------- MODAL ---------- */
+/* ---------- MODAL ---------- */  
 
-    openModal(`
+openModal(`  
 
-      <h2>
-        Add Money
-      </h2>
+  <h2>  
+    Add Money  
+  </h2>  
 
 
-      <p>
-        Pay using the QR code and submit
-        your UTR / Transaction ID.
-      </p>
+  <p>  
+    Pay using the QR code and submit  
+    your UTR / Transaction ID.  
+  </p>  
 
 
-      ${qrHtml}
+  ${qrHtml}  
 
 
-      <form
-        id="depositForm"
-        class="formgrid"
-      >
+  <form  
+    id="depositForm"  
+    class="formgrid"  
+  >  
 
-        <input
-          id="depositAmount"
-          type="number"
-          min="1"
-          max="50000"
-          step="1"
-          inputmode="numeric"
-          placeholder="Amount ₹"
-          required
-        >
+    <input  
+      id="depositAmount"  
+      type="number"  
+      min="1"  
+      max="50000"  
+      step="1"  
+      inputmode="numeric"  
+      placeholder="Amount ₹"  
+      required  
+    >  
 
 
-        <input
-          id="depositUtr"
-          type="text"
-          minlength="4"
-          maxlength="100"
-          autocomplete="off"
-          placeholder="UTR / Transaction ID"
-          required
-        >
+    <input  
+      id="depositUtr"  
+      type="text"  
+      minlength="4"  
+      maxlength="100"  
+      autocomplete="off"  
+      placeholder="UTR / Transaction ID"  
+      required  
+    >  
 
 
-        <input
-          id="depositMobile"
-          type="tel"
-          maxlength="20"
-          placeholder="Mobile number"
-          required
-        >
+    <input  
+      id="depositMobile"  
+      type="tel"  
+      maxlength="20"  
+      placeholder="Mobile number"  
+      required  
+    >  
 
 
-        <input
-          id="depositEmail"
-          type="email"
-          placeholder="Email"
-          value="${esc(
-            currentUser.email || ""
-          )}"
-          required
-        >
+    <input  
+      id="depositEmail"  
+      type="email"  
+      placeholder="Email"  
+      value="${esc(  
+        currentUser.email || ""  
+      )}"  
+      required  
+    >  
 
 
-        <button
-          id="depositSubmitBtn"
-          type="submit"
-          class="btn primary"
-        >
-          Submit Deposit
-        </button>
+    <button  
+      id="depositSubmitBtn"  
+      type="submit"  
+      class="btn primary"  
+    >  
+      Submit Deposit  
+    </button>  
 
-      </form>
+  </form>  
 
-    `);
+`);  
 
 
-    const form =
-      $("depositForm");
+const form =  
+  $("depositForm");  
 
 
-    const submitBtn =
-      $("depositSubmitBtn");
+const submitBtn =  
+  $("depositSubmitBtn");  
 
 
-    if (!form) {
+if (!form) {  
 
-      toast(
-        "Deposit form could not be loaded."
-      );
+  toast(  
+    "Deposit form could not be loaded."  
+  );  
 
-      return;
+  return;  
 
-    }
+}  
 
 
-    /* ---------- FORM SUBMIT ---------- */
+/* ---------- FORM SUBMIT ---------- */  
 
-    form.onsubmit =
-      async function (event) {
+form.onsubmit =  
+  async function (event) {  
 
-        event.preventDefault();
+    event.preventDefault();  
 
 
-        if (
-          submitBtn &&
-          submitBtn.disabled
-        ) {
+    if (  
+      submitBtn &&  
+      submitBtn.disabled  
+    ) {  
 
-          return;
+      return;  
 
-        }
+    }  
 
 
-        try {
+    try {  
 
-          const user =
-            auth.currentUser;
+      const user =  
+        auth.currentUser;  
 
 
-          if (!user) {
+      if (!user) {  
 
-            throw new Error(
-              "Login session expired. Please login again."
-            );
+        throw new Error(  
+          "Login session expired. Please login again."  
+        );  
 
-          }
+      }  
 
 
-          const amountRaw =
-            $("depositAmount")
-              ?.value
-              ?.trim() || "";
+      const amountRaw =  
+        $("depositAmount")  
+          ?.value  
+          ?.trim() || "";  
 
 
-          const utr =
-            $("depositUtr")
-              ?.value
-              ?.trim() || "";
+      const utr =  
+        $("depositUtr")  
+          ?.value  
+          ?.trim() || "";  
 
 
-          const mobile =
-            $("depositMobile")
-              ?.value
-              ?.trim() || "";
+      const mobile =  
+        $("depositMobile")  
+          ?.value  
+          ?.trim() || "";  
 
 
-          const email =
-            $("depositEmail")
-              ?.value
-              ?.trim() || "";
+      const email =  
+        $("depositEmail")  
+          ?.value  
+          ?.trim() || "";  
 
 
-          const amount =
-            Number(amountRaw);
+      const amount =  
+        Number(amountRaw);  
 
 
-          if (
-            !Number.isFinite(amount) ||
-            !Number.isInteger(amount) ||
-            amount < 1 ||
-            amount > 50000
-          ) {
+      if (  
+        !Number.isFinite(amount) ||  
+        !Number.isInteger(amount) ||  
+        amount < 1 ||  
+        amount > 50000  
+      ) {  
 
-            throw new Error(
-              "Amount must be a whole number between ₹1 and ₹50,000."
-            );
+        throw new Error(  
+          "Amount must be a whole number between ₹1 and ₹50,000."  
+        );  
 
-          }
+      }  
 
 
-          if (!utr) {
+      if (!utr) {  
 
-            throw new Error(
-              "UTR / Transaction ID is required."
-            );
+        throw new Error(  
+          "UTR / Transaction ID is required."  
+        );  
 
-          }
+      }  
 
 
-          if (utr.length < 4) {
+      if (utr.length < 4) {  
 
-            throw new Error(
-              "Please enter a valid UTR / Transaction ID."
-            );
+        throw new Error(  
+          "Please enter a valid UTR / Transaction ID."  
+        );  
 
-          }
+      }  
 
 
-          if (!mobile) {
+      if (!mobile) {  
 
-            throw new Error(
-              "Mobile number is required."
-            );
+        throw new Error(  
+          "Mobile number is required."  
+        );  
 
-          }
+      }  
 
 
-          if (!email) {
+      if (!email) {  
 
-            throw new Error(
-              "Email is required."
-            );
+        throw new Error(  
+          "Email is required."  
+        );  
 
-          }
+      }  
 
 
-          if (submitBtn) {
+      if (submitBtn) {  
 
-            submitBtn.disabled = true;
+        submitBtn.disabled = true;  
 
-            submitBtn.textContent =
-              "Submitting...";
+        submitBtn.textContent =  
+          "Submitting...";  
 
-          }
+      }  
 
 
-          const depositRef =
-            await addDoc(
-              collection(
-                db,
-                "depositRequests"
-              ),
-              {
+      const depositRef =  
+        await addDoc(  
+          collection(  
+            db,  
+            "depositRequests"  
+          ),  
+          {  
 
-                uid:
-                  user.uid,
+            uid:  
+              user.uid,  
 
-                amount:
-                  amount,
+            amount:  
+              amount,  
 
-                utr:
-                  utr,
+            utr:  
+              utr,  
 
-                mobile:
-                  mobile,
+            mobile:  
+              mobile,  
 
-                email:
-                  email,
+            email:  
+              email,  
 
-                status:
-                  "pending",
+            status:  
+              "pending",  
 
-                createdAt:
-                  serverTimestamp(),
+            createdAt:  
+              serverTimestamp(),  
 
-                updatedAt:
-                  serverTimestamp()
+            updatedAt:  
+              serverTimestamp()  
 
-              }
-            );
+          }  
+        );  
 
 
-          console.log(
-            "Deposit request created:",
-            depositRef.id
-          );
+      console.log(  
+        "Deposit request created:",  
+        depositRef.id  
+      );  
 
 
-          toast(
-            "Deposit request submitted successfully."
-          );
+      toast(  
+        "Deposit request submitted successfully."  
+      );  
 
 
-          closeModal();
+      closeModal();  
 
 
-        } catch (error) {
+    } catch (error) {  
 
-          console.error(
-            "========== DEPOSIT ERROR =========="
-          );
+      console.error(  
+        "========== DEPOSIT ERROR =========="  
+      );  
 
-          console.error(
-            "Error object:",
-            error
-          );
+      console.error(  
+        "Error object:",  
+        error  
+      );  
 
-          console.error(
-            "Error code:",
-            error?.code
-          );
+      console.error(  
+        "Error code:",  
+        error?.code  
+      );  
 
-          console.error(
-            "Error message:",
-            error?.message
-          );
+      console.error(  
+        "Error message:",  
+        error?.message  
+      );  
 
-          console.error(
-            "==================================="
-          );
+      console.error(  
+        "==================================="  
+      );  
 
 
-          if (submitBtn) {
+      if (submitBtn) {  
 
-            submitBtn.disabled = false;
+        submitBtn.disabled = false;  
 
-            submitBtn.textContent =
-              "Submit Deposit";
+        submitBtn.textContent =  
+          "Submit Deposit";  
 
-          }
+      }  
 
 
-          let message =
-            "Unable to submit deposit request.";
+      let message =  
+        "Unable to submit deposit request.";  
 
 
-          if (
-            error?.code ===
-            "permission-denied"
-          ) {
+      if (  
+        error?.code ===  
+        "permission-denied"  
+      ) {  
 
-            message =
-              "Firebase permission denied. Firestore Rules check karein.";
+        message =  
+          "Firebase permission denied. Firestore Rules check karein.";  
 
-          } else if (
-            error?.code ===
-            "unauthenticated"
-          ) {
+      } else if (  
+        error?.code ===  
+        "unauthenticated"  
+      ) {  
 
-            message =
-              "Login session expired. Please login again.";
+        message =  
+          "Login session expired. Please login again.";  
 
-          } else if (
-            error?.code ===
-            "failed-precondition"
-          ) {
+      } else if (  
+        error?.code ===  
+        "failed-precondition"  
+      ) {  
 
-            message =
-              "Firestore configuration/index problem.";
+        message =  
+          "Firestore configuration/index problem.";  
 
-          } else if (
-            error?.code ===
-            "unavailable"
-          ) {
+      } else if (  
+        error?.code ===  
+        "unavailable"  
+      ) {  
 
-            message =
-              "Firebase server temporarily unavailable. Internet check karke dobara try karein.";
+        message =  
+          "Firebase server temporarily unavailable. Internet check karke dobara try karein.";  
 
-          } else if (
-            error?.message
-          ) {
+      } else if (  
+        error?.message  
+      ) {  
 
-            message =
-              error.message;
+        message =  
+          error.message;  
 
-          }
+      }  
 
 
-          toast(message);
+      toast(message);  
 
-        }
-
-      };
+    }  
 
   };
 
+};
 
 /* =========================
-   TRANSACTIONS
+TRANSACTIONS
 ========================= */
 
 window.transactions =
-  async function () {
+async function () {
 
-    if (!currentUser) {
+if (!currentUser) {  
 
-      toast("Please login first.");
+  toast("Please login first.");  
 
-      return;
+  return;  
 
-    }
-
-
-    try {
-
-      const q =
-        query(
-          collection(
-            db,
-            "walletTransactions"
-          ),
-
-          where(
-            "uid",
-            "==",
-            currentUser.uid
-          )
-        );
+}  
 
 
-      const snap =
-        await getDocs(q);
+try {  
+
+  const q =  
+    query(  
+      collection(  
+        db,  
+        "walletTransactions"  
+      ),  
+
+      where(  
+        "uid",  
+        "==",  
+        currentUser.uid  
+      )  
+    );  
 
 
-      const rows =
-        snap.docs
-          .map(
-            item => ({
-              id:
-                item.id,
-
-              ...item.data()
-            })
-          )
-          .sort(
-            (a, b) =>
-              timestampMs(
-                b.createdAt
-              ) -
-              timestampMs(
-                a.createdAt
-              )
-          );
+  const snap =  
+    await getDocs(q);  
 
 
-      openModal(`
+  const rows =  
+    snap.docs  
+      .map(  
+        item => ({  
+          id:  
+            item.id,  
 
-        <h2>
-          Transactions
-        </h2>
-
-
-        ${
-          rows.length
-            ? rows
-                .map(
-                  transaction => {
-
-                    const amount =
-                      Number(
-                        transaction.amount ||
-                        0
-                      );
-
-
-                    return `
-
-                      <div
-                        class="transaction-row"
-                        style="
-                          padding:12px 0;
-                          border-bottom:1px solid #ddd;
-                        "
-                      >
-
-                        <strong>
-
-                          ${
-                            amount >= 0
-                              ? "+"
-                              : ""
-                          }₹${amount}
-
-                        </strong>
+          ...item.data()  
+        })  
+      )  
+      .sort(  
+        (a, b) =>  
+          timestampMs(  
+            b.createdAt  
+          ) -  
+          timestampMs(  
+            a.createdAt  
+          )  
+      );  
 
 
-                        <div>
-                          ${esc(
-                            transaction.description ||
-                            transaction.type ||
-                            "Transaction"
-                          )}
-                        </div>
+  openModal(`  
+
+    <h2>  
+      Transactions  
+    </h2>  
 
 
-                        <small>
-                          ${esc(
-                            fmt(
-                              transaction.createdAt
-                            )
-                          )}
-                        </small>
+    ${  
+      rows.length  
+        ? rows  
+            .map(  
+              transaction => {  
 
-                      </div>
+                const amount =  
+                  Number(  
+                    transaction.amount ||  
+                    0  
+                  );  
 
-                    `;
 
-                  }
-                )
-                .join("")
+                return `  
 
-            : `
+                  <div  
+                    class="transaction-row"  
+                    style="  
+                      padding:12px 0;  
+                      border-bottom:1px solid #ddd;  
+                    "  
+                  >  
 
-              <p>
-                No transactions found.
-              </p>
+                    <strong>  
 
-            `
-        }
+                      ${  
+                        amount >= 0  
+                          ? "+"  
+                          : ""  
+                      }₹${amount}  
 
-      `);
+                    </strong>  
 
-    } catch (error) {
 
-      console.error(error);
+                    <div>  
+                      ${esc(  
+                        transaction.description ||  
+                        transaction.type ||  
+                        "Transaction"  
+                      )}  
+                    </div>  
 
-      toast(
-        error.message ||
-        "Unable to load transactions."
-      );
 
-    }
+                    <small>  
+                      ${esc(  
+                        fmt(  
+                          transaction.createdAt  
+                        )  
+                      )}  
+                    </small>  
 
-  };
+                  </div>  
 
+                `;  
+
+              }  
+            )  
+            .join("")  
+
+        : `  
+
+          <p>  
+            No transactions found.  
+          </p>  
+
+        `  
+    }  
+
+  `);  
+
+} catch (error) {  
+
+  console.error(error);  
+
+  toast(  
+    error.message ||  
+    "Unable to load transactions."  
+  );  
+
+}
+
+};
 
 /* =========================
-   LOGOUT
+LOGOUT
 ========================= */
 
 window.logoutUser =
-  async function () {
+async function () {
 
-    try {
+try {  
 
-      await signOut(auth);
+  await signOut(auth);  
 
-      closeModal();
+  closeModal();  
 
-      toast("Logged out.");
+  toast("Logged out.");  
 
-      location.hash = "";
+  location.hash = "";  
 
-      route();
+  route();  
 
-    } catch (error) {
+} catch (error) {  
 
-      console.error(error);
+  console.error(error);  
 
-      toast(
-        error.message ||
-        "Logout failed."
-      );
+  toast(  
+    error.message ||  
+    "Logout failed."  
+  );  
 
-    }
+}
 
-  };
-
+};
 
 /* =========================
-   JOIN TOURNAMENT
+JOIN TOURNAMENT
 ========================= */
 
 window.joinTournament =
-  async function (tournamentId) {
+async function (tournamentId) {
 
-    const tournament =
-      tournaments.find(
-        item =>
-          item.id ===
-          tournamentId
-      );
-
-
-    if (!tournament) {
-
-      toast(
-        "Tournament not found."
-      );
-
-      return;
-
-    }
+const tournament =  
+  tournaments.find(  
+    item =>  
+      item.id ===  
+      tournamentId  
+  );  
 
 
-    if (!currentUser) {
+if (!tournament) {  
 
-      toast(
-        "Please login first."
-      );
+  toast(  
+    "Tournament not found."  
+  );  
 
-      openLogin();
+  return;  
 
-      return;
-
-    }
+}  
 
 
-    joinForm(tournament);
+if (!currentUser) {  
 
-  };
+  toast(  
+    "Please login first."  
+  );  
 
+  openLogin();  
+
+  return;  
+
+}  
+
+
+joinForm(tournament);
+
+};
 
 /* =========================
-   JOIN FORM
+JOIN FORM
 ========================= */
 
 function joinForm(t) {
 
-  openModal(`
+openModal(`
 
-    <h2>
-      Join:
-      ${esc(t.name)}
-    </h2>
+<h2>  
+  Join:  
+  ${esc(t.name)}  
+</h2>  
 
 
-    <form
-      id="joinForm"
-      class="formgrid"
-    >
+<form  
+  id="joinForm"  
+  class="formgrid"  
+>  
 
-      <input
-        id="cname"
-        placeholder="Character name"
-        required
-      >
+  <input  
+    id="cname"  
+    placeholder="Character name"  
+    required  
+  >  
 
 
-      <input
-        id="bgmi"
-        placeholder="BGMI ID"
-        required
-      >
+  <input  
+    id="bgmi"  
+    placeholder="BGMI ID"  
+    required  
+  >  
 
 
-      <input
-        id="wa"
-        placeholder="WhatsApp number"
-        required
-      >
+  <input  
+    id="wa"  
+    placeholder="WhatsApp number"  
+    required  
+  >  
 
 
-      <input
-        id="upi"
-        placeholder="UPI ID"
-        required
-      >
+  <input  
+    id="upi"  
+    placeholder="UPI ID"  
+    required  
+  >  
 
 
-      <button
-        id="joinSubmitBtn"
-        type="submit"
-        class="btn primary"
-      >
-        Confirm Join
-      </button>
+  <button  
+    id="joinSubmitBtn"  
+    type="submit"  
+    class="btn primary"  
+  >  
+    Confirm Join  
+  </button>  
 
-    </form>
+</form>
 
-  `);
+`);
 
+$("joinForm").onsubmit =
+async event => {
 
-  $("joinForm").onsubmit =
-    async event => {
+event.preventDefault();  
 
-      event.preventDefault();
 
+  const submitBtn =  
+    $("joinSubmitBtn");  
 
-      const submitBtn =
-        $("joinSubmitBtn");
 
+  if (  
+    submitBtn &&  
+    submitBtn.disabled  
+  ) {  
 
-      if (
-        submitBtn &&
-        submitBtn.disabled
-      ) {
+    return;  
 
-        return;
+  }  
 
-      }
 
+  try {  
 
-      try {
+    if (!auth.currentUser) {  
 
-        if (!auth.currentUser) {
+      throw new Error(  
+        "Please login first."  
+      );  
 
-          throw new Error(
-            "Please login first."
-          );
+    }  
 
-        }
 
+    const characterName =  
+      $("cname")  
+        .value  
+        .trim();  
 
-        const characterName =
-          $("cname")
-            .value
-            .trim();
 
+    const bgmiId =  
+      $("bgmi")  
+        .value  
+        .trim();  
 
-        const bgmiId =
-          $("bgmi")
-            .value
-            .trim();
 
+    const whatsapp =  
+      $("wa")  
+        .value  
+        .trim();  
 
-        const whatsapp =
-          $("wa")
-            .value
-            .trim();
 
+    const upiId =  
+      $("upi")  
+        .value  
+        .trim();  
 
-        const upiId =
-          $("upi")
-            .value
-            .trim();
 
+    if (!characterName) {  
 
-        if (!characterName) {
+      throw new Error(  
+        "Character name is required."  
+      );  
 
-          throw new Error(
-            "Character name is required."
-          );
+    }  
 
-        }
 
+    if (!bgmiId) {  
 
-        if (!bgmiId) {
+      throw new Error(  
+        "BGMI ID is required."  
+      );  
 
-          throw new Error(
-            "BGMI ID is required."
-          );
+    }  
 
-        }
 
+    if (!whatsapp) {  
 
-        if (!whatsapp) {
+      throw new Error(  
+        "WhatsApp number is required."  
+      );  
 
-          throw new Error(
-            "WhatsApp number is required."
-          );
+    }  
 
-        }
 
+    if (!upiId) {  
 
-        if (!upiId) {
+      throw new Error(  
+        "UPI ID is required."  
+      );  
 
-          throw new Error(
-            "UPI ID is required."
-          );
+    }  
 
-        }
 
+    const uid =  
+      auth.currentUser.uid;  
 
-        const uid =
-          auth.currentUser.uid;
 
+    const participantId =  
+      `${uid}_${t.id}`;  
 
-        const participantId =
-          `${uid}_${t.id}`;
 
+    const duplicateQuery =  
+      query(  
+        collection(  
+          db,  
+          "tournamentParticipants"  
+        ),  
 
-        const duplicateQuery =
-          query(
-            collection(
-              db,
-              "tournamentParticipants"
-            ),
+        where(  
+          "uid",  
+          "==",  
+          uid  
+        ),  
 
-            where(
-              "uid",
-              "==",
-              uid
-            ),
+        where(  
+          "tournamentId",  
+          "==",  
+          t.id  
+        )  
+      );  
 
-            where(
-              "tournamentId",
-              "==",
-              t.id
-            )
-          );
 
+    const duplicateSnapshot =  
+      await getDocs(  
+        duplicateQuery  
+      );  
 
-        const duplicateSnapshot =
-          await getDocs(
-            duplicateQuery
-          );
 
+    if (  
+      !duplicateSnapshot.empty  
+    ) {  
 
-        if (
-          !duplicateSnapshot.empty
-        ) {
+      throw new Error(  
+        "You have already joined this tournament."  
+      );  
 
-          throw new Error(
-            "You have already joined this tournament."
-          );
+    }  
 
-        }
 
+    const tournamentRef =  
+      doc(  
+        db,  
+        "tournaments",  
+        t.id  
+      );  
 
-        const tournamentRef =
-          doc(
-            db,
-            "tournaments",
-            t.id
-          );
 
+    const participantRef =  
+      doc(  
+        db,  
+        "tournamentParticipants",  
+        participantId  
+      );  
 
-        const participantRef =
-          doc(
-            db,
-            "tournamentParticipants",
-            participantId
-          );
 
+    if (submitBtn) {  
 
-        if (submitBtn) {
+      submitBtn.disabled = true;  
 
-          submitBtn.disabled = true;
+      submitBtn.textContent =  
+        "Joining...";  
 
-          submitBtn.textContent =
-            "Joining...";
+    }  
 
-        }
 
+    await runTransaction(  
+      db,  
+      async transaction => {  
 
-        await runTransaction(
-          db,
-          async transaction => {
+        const tournamentSnap =  
+          await transaction.get(  
+            tournamentRef  
+          );  
 
-            const tournamentSnap =
-              await transaction.get(
-                tournamentRef
-              );
 
+        const participantSnap =  
+          await transaction.get(  
+            participantRef  
+          );  
 
-            const participantSnap =
-              await transaction.get(
-                participantRef
-              );
 
+        if (  
+          !tournamentSnap.exists()  
+        ) {  
 
-            if (
-              !tournamentSnap.exists()
-            ) {
+          throw new Error(  
+            "Tournament no longer exists."  
+          );  
 
-              throw new Error(
-                "Tournament no longer exists."
-              );
+        }  
 
-            }
 
+        if (  
+          participantSnap.exists()  
+        ) {  
 
-            if (
-              participantSnap.exists()
-            ) {
+          throw new Error(  
+            "You have already joined this tournament."  
+          );  
 
-              throw new Error(
-                "You have already joined this tournament."
-              );
+        }  
 
-            }
 
+        const tournamentData =  
+          tournamentSnap.data() || {};  
 
-            const tournamentData =
-              tournamentSnap.data() || {};
 
+        /* ---------- STATUS ---------- */  
 
-            /* ---------- STATUS ---------- */
+        if (  
+          tournamentData.status ===  
+          "closed"  
+        ) {  
 
-            if (
-              tournamentData.status ===
-              "closed"
-            ) {
+          throw new Error(  
+            "Registration is closed."  
+          );  
 
-              throw new Error(
-                "Registration is closed."
-              );
+        }  
 
-            }
 
+        if (  
+          tournamentData.status ===  
+          "completed"  
+        ) {  
 
-            if (
-              tournamentData.status ===
-              "completed"
-            ) {
+          throw new Error(  
+            "This tournament has already ended."  
+          );  
 
-              throw new Error(
-                "This tournament has already ended."
-              );
+        }  
 
-            }
 
+        /* ---------- REGISTRATION END ---------- */  
 
-            /* ---------- REGISTRATION END ---------- */
+        const registrationEnd =  
+          tournamentData.registrationEnd ||  
+          tournamentData.regEnd;  
 
-            const registrationEnd =
-              tournamentData.registrationEnd ||
-              tournamentData.regEnd;
 
+        if (  
+          registrationEnd &&  
+          timestampMs(  
+            registrationEnd  
+          ) > 0 &&  
+          Date.now() >  
+            timestampMs(  
+              registrationEnd  
+            )  
+        ) {  
 
-            if (
-              registrationEnd &&
-              timestampMs(
-                registrationEnd
-              ) > 0 &&
-              Date.now() >
-                timestampMs(
-                  registrationEnd
-                )
-            ) {
+          throw new Error(  
+            "Registration has ended."  
+          );  
 
-              throw new Error(
-                "Registration has ended."
-              );
+        }  
 
-            }
 
+        /* ---------- SLOTS ---------- */  
 
-            /* ---------- SLOTS ---------- */
+        const maxSlots =  
+          Number(  
+            tournamentData.slots ||  
+            tournamentData.maxSlots ||  
+            tournamentData.totalSlots ||  
+            0  
+          );  
 
-            const maxSlots =
-              Number(
-                tournamentData.slots ||
-                tournamentData.maxSlots ||
-                tournamentData.totalSlots ||
-                0
-              );
 
+        const joinedCount =  
+          Number(  
+            tournamentData.joinedCount ||  
+            0  
+          );  
 
-            const joinedCount =
-              Number(
-                tournamentData.joinedCount ||
-                0
-              );
 
+        if (  
+          maxSlots > 0 &&  
+          joinedCount >= maxSlots  
+        ) {  
 
-            if (
-              maxSlots > 0 &&
-              joinedCount >= maxSlots
-            ) {
+          throw new Error(  
+            "Tournament slots are full."  
+          );  
 
-              throw new Error(
-                "Tournament slots are full."
-              );
+        }  
 
-            }
 
+        /* ---------- ENTRY FEE ---------- */  
 
-            /* ---------- ENTRY FEE ---------- */
+        const entryFee =  
+          Math.max(  
+            0,  
+            Number(  
+              tournamentData.entryFee ||  
+              0  
+            )  
+          );  
 
-            const entryFee =
-              Math.max(
-                0,
-                Number(
-                  tournamentData.entryFee ||
-                  0
-                )
-              );
 
+        /*  
+         * IMPORTANT:  
+         *  
+         * With secure Firestore Rules,  
+         * normal users must NOT be allowed  
+         * to change walletBalance.  
+         *  
+         * Therefore paid tournament joining  
+         * must be processed server-side.  
+         */  
 
-            /*
-             * IMPORTANT:
-             *
-             * With secure Firestore Rules,
-             * normal users must NOT be allowed
-             * to change walletBalance.
-             *
-             * Therefore paid tournament joining
-             * must be processed server-side.
-             */
+        if (entryFee > 0) {  
 
-            if (entryFee > 0) {
+          throw new Error(  
+            "Paid tournament entry is temporarily unavailable. Secure wallet payment setup required."  
+          );  
 
-              throw new Error(
-                "Paid tournament entry is temporarily unavailable. Secure wallet payment setup required."
-              );
+        }  
 
-            }
 
+        /* ---------- PARTICIPANT ---------- */  
 
-            /* ---------- PARTICIPANT ---------- */
+        transaction.set(  
+          participantRef,  
+          {  
 
-            transaction.set(
-              participantRef,
-              {
+            uid,  
 
-                uid,
+            tournamentId:  
+              t.id,  
 
-                tournamentId:
-                  t.id,
+            tournamentName:  
+              tournamentData.name ||  
+              t.name ||  
+              "",  
 
-                tournamentName:
-                  tournamentData.name ||
-                  t.name ||
-                  "",
+            characterName,  
 
-                characterName,
+            bgmiId,  
 
-                bgmiId,
+            whatsapp,  
 
-                whatsapp,
+            upiId,  
 
-                upiId,
+            entryFee: 0,  
 
-                entryFee: 0,
+            joinedAt:  
+              serverTimestamp()  
 
-                joinedAt:
-                  serverTimestamp()
+          }  
+        );  
 
-              }
-            );
+      }  
+    );  
 
-          }
-        );
 
+    toast(  
+      "Tournament joined successfully."  
+    );  
 
-        toast(
-          "Tournament joined successfully."
-        );
 
+    closeModal();  
 
-        closeModal();
 
+    await renderHome();  
 
-        await renderHome();
 
+  } catch (error) {  
 
-      } catch (error) {
+    console.error(  
+      "Join error:",  
+      error  
+    );  
 
-        console.error(
-          "Join error:",
-          error
-        );
 
+    if (submitBtn) {  
 
-        if (submitBtn) {
+      submitBtn.disabled = false;  
 
-          submitBtn.disabled = false;
+      submitBtn.textContent =  
+        "Confirm Join";  
 
-          submitBtn.textContent =
-            "Confirm Join";
+    }  
 
-        }
 
+    toast(  
+      error.message ||  
+      "Unable to join tournament."  
+    );  
 
-        toast(
-          error.message ||
-          "Unable to join tournament."
-        );
+  }  
 
-      }
-
-    };
+};
 
 }
 
-
 /* =========================
-   STATIC PAGES
+STATIC PAGES
 ========================= */
 
 function renderStatic(page) {
 
-  const appEl = $("app");
+const appEl = $("app");
 
-  if (!appEl) return;
+if (!appEl) return;
 
+if (page === "about") {
 
-  if (page === "about") {
+appEl.innerHTML = `  
 
-    appEl.innerHTML = `
+  <div class="static-page">  
 
-      <div class="static-page">
+    <h1>  
+      About eSports24  
+    </h1>  
 
-        <h1>
-          About eSports24
-        </h1>
+    <p>  
+      eSports24 is a BGMI tournament  
+      platform where players can join  
+      tournaments and compete for prizes.  
+    </p>  
 
-        <p>
-          eSports24 is a BGMI tournament
-          platform where players can join
-          tournaments and compete for prizes.
-        </p>
+  </div>  
 
-      </div>
+`;  
 
-    `;
-
-    return;
-
-  }
-
-
-  if (page === "terms") {
-
-    appEl.innerHTML = `
-
-      <div class="static-page">
-
-        <h1>
-          Terms & Conditions
-        </h1>
-
-        <p>
-          Players must provide correct
-          tournament information and follow
-          tournament rules.
-        </p>
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  if (page === "privacy") {
-
-    appEl.innerHTML = `
-
-      <div class="static-page">
-
-        <h1>
-          Privacy Policy
-        </h1>
-
-        <p>
-          User information is used for
-          account, tournament and payment
-          related functionality.
-        </p>
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  if (page === "support") {
-
-    appEl.innerHTML = `
-
-      <div class="static-page">
-
-        <h1>
-          Support
-        </h1>
-
-
-        <form
-          id="supportForm"
-          class="formgrid"
-        >
-
-          <input
-            id="supportSubject"
-            placeholder="Subject"
-            required
-          >
-
-
-          <textarea
-            id="supportMessage"
-            placeholder="Your message"
-            required
-          ></textarea>
-
-
-          <button
-            type="submit"
-            class="btn primary"
-          >
-            Send Message
-          </button>
-
-        </form>
-
-      </div>
-
-    `;
-
-
-    $("supportForm").onsubmit =
-      async event => {
-
-        event.preventDefault();
-
-
-        if (!currentUser) {
-
-          toast(
-            "Please login first."
-          );
-
-          return;
-
-        }
-
-
-        try {
-
-          const subject =
-            $("supportSubject")
-              .value
-              .trim();
-
-
-          const message =
-            $("supportMessage")
-              .value
-              .trim();
-
-
-          if (!subject) {
-
-            throw new Error(
-              "Subject is required."
-            );
-
-          }
-
-
-          if (!message) {
-
-            throw new Error(
-              "Message is required."
-            );
-
-          }
-
-
-          await addDoc(
-            collection(
-              db,
-              "supportMessages"
-            ),
-            {
-
-              uid:
-                currentUser.uid,
-
-              email:
-                currentUser.email ||
-                "",
-
-              subject,
-
-              message,
-
-              status:
-                "open",
-
-              createdAt:
-                serverTimestamp()
-
-            }
-          );
-
-
-          toast(
-            "Support message sent."
-          );
-
-
-          $("supportForm")
-            .reset();
-
-        } catch (error) {
-
-          console.error(error);
-
-          toast(
-            error.message ||
-            "Unable to send message."
-          );
-
-        }
-
-      };
-
-  }
+return;
 
 }
 
+if (page === "terms") {
+
+appEl.innerHTML = `  
+
+  <div class="static-page">  
+
+    <h1>  
+      Terms & Conditions  
+    </h1>  
+
+    <p>  
+      Players must provide correct  
+      tournament information and follow  
+      tournament rules.  
+    </p>  
+
+  </div>  
+
+`;  
+
+return;
+
+}
+
+if (page === "privacy") {
+
+appEl.innerHTML = `  
+
+  <div class="static-page">  
+
+    <h1>  
+      Privacy Policy  
+    </h1>  
+
+    <p>  
+      User information is used for  
+      account, tournament and payment  
+      related functionality.  
+    </p>  
+
+  </div>  
+
+`;  
+
+return;
+
+}
+
+if (page === "support") {
+
+appEl.innerHTML = `  
+
+  <div class="static-page">  
+
+    <h1>  
+      Support  
+    </h1>  
+
+
+    <form  
+      id="supportForm"  
+      class="formgrid"  
+    >  
+
+      <input  
+        id="supportSubject"  
+        placeholder="Subject"  
+        required  
+      >  
+
+
+      <textarea  
+        id="supportMessage"  
+        placeholder="Your message"  
+        required  
+      ></textarea>  
+
+
+      <button  
+        type="submit"  
+        class="btn primary"  
+      >  
+        Send Message  
+      </button>  
+
+    </form>  
+
+  </div>  
+
+`;  
+
+
+$("supportForm").onsubmit =  
+  async event => {  
+
+    event.preventDefault();  
+
+
+    if (!currentUser) {  
+
+      toast(  
+        "Please login first."  
+      );  
+
+      return;  
+
+    }  
+
+
+    try {  
+
+      const subject =  
+        $("supportSubject")  
+          .value  
+          .trim();  
+
+
+      const message =  
+        $("supportMessage")  
+          .value  
+          .trim();  
+
+
+      if (!subject) {  
+
+        throw new Error(  
+          "Subject is required."  
+        );  
+
+      }  
+
+
+      if (!message) {  
+
+        throw new Error(  
+          "Message is required."  
+        );  
+
+      }  
+
+
+      await addDoc(  
+        collection(  
+          db,  
+          "supportMessages"  
+        ),  
+        {  
+
+          uid:  
+            currentUser.uid,  
+
+          email:  
+            currentUser.email ||  
+            "",  
+
+          subject,  
+
+          message,  
+
+          status:  
+            "open",  
+
+          createdAt:  
+            serverTimestamp()  
+
+        }  
+      );  
+
+
+      toast(  
+        "Support message sent."  
+      );  
+
+
+      $("supportForm")  
+        .reset();  
+
+    } catch (error) {  
+
+      console.error(error);  
+
+      toast(  
+        error.message ||  
+        "Unable to send message."  
+      );  
+
+    }  
+
+  };
+
+}
+
+}
 
 /* =========================
-   ROUTER
+ROUTER
 ========================= */
 
 async function route() {
 
-  const hash =
-    location.hash
-      .replace("#", "")
-      .trim();
+const hash =
+location.hash
+.replace("#", "")
+.trim();
 
+if (
+hash === "" ||
+hash === "home"
+) {
 
-  if (
-    hash === "" ||
-    hash === "home"
-  ) {
+await renderHome();  
 
-    await renderHome();
-
-    return;
-
-  }
-
-
-  if (
-    hash === "my-tournaments"
-  ) {
-
-    await renderMyTournaments();
-
-    return;
-
-  }
-
-
-  if (
-    hash === "about" ||
-    hash === "terms" ||
-    hash === "privacy" ||
-    hash === "support"
-  ) {
-
-    renderStatic(hash);
-
-    return;
-
-  }
-
-
-  await renderHome();
+return;
 
 }
 
+if (
+hash === "my-tournaments"
+) {
+
+await renderMyTournaments();  
+
+return;
+
+}
+
+if (
+hash === "about" ||
+hash === "terms" ||
+hash === "privacy" ||
+hash === "support"
+) {
+
+renderStatic(hash);  
+
+return;
+
+}
+
+await renderHome();
+
+}
 
 window.route = route;
 
-
 window.addEventListener(
-  "hashchange",
-  route
+"hashchange",
+route
 );
 
-
 /* =========================
-   SPLASH
+SPLASH
 ========================= */
 
 function hideSplash() {
 
-  const splash =
-    $("splash");
+const splash =
+$("splash");
 
-  if (!splash) return;
+if (!splash) return;
 
+splash.classList.add(
+"hidden"
+);
 
-  splash.classList.add(
-    "hidden"
-  );
+setTimeout(() => {
 
+splash.style.display =  
+  "none";
 
-  setTimeout(() => {
-
-    splash.style.display =
-      "none";
-
-  }, 500);
+}, 500);
 
 }
 
-
 /* =========================
-   ERROR HANDLERS
+ERROR HANDLERS
 ========================= */
 
 window.addEventListener(
-  "error",
-  event => {
+"error",
+event => {
 
-    console.error(
-      "Global error:",
-      event.error ||
-      event.message
-    );
-
-  }
+console.error(  
+  "Global error:",  
+  event.error ||  
+  event.message  
 );
 
+}
+);
 
 window.addEventListener(
-  "unhandledrejection",
-  event => {
+"unhandledrejection",
+event => {
 
-    console.error(
-      "Unhandled promise rejection:",
-      event.reason
-    );
-
-  }
+console.error(  
+  "Unhandled promise rejection:",  
+  event.reason  
 );
 
+}
+);
 
 /* =========================
-   START APP
+START APP
 ========================= */
 
 async function startApp() {
 
-  if (appStarted) return;
+if (appStarted) return;
 
-  appStarted = true;
+appStarted = true;
 
+try {
 
-  try {
+loadTournaments();  
 
-    loadTournaments();
+await loadPublicSettings();  
 
-    await loadPublicSettings();
+await route();
 
-    await route();
+} catch (error) {
 
-  } catch (error) {
-
-    console.error(
-      "App start error:",
-      error
-    );
-
-
-    const appEl =
-      $("app");
+console.error(  
+  "App start error:",  
+  error  
+);  
 
 
-    if (appEl) {
+const appEl =  
+  $("app");  
 
-      appEl.innerHTML = `
 
-        <div class="empty">
+if (appEl) {  
 
-          Unable to start app.
-          Please refresh the page.
+  appEl.innerHTML = `  
 
-        </div>
+    <div class="empty">  
 
-      `;
+      Unable to start app.  
+      Please refresh the page.  
 
-    }
+    </div>  
 
-  } finally {
-
-    hideSplash();
-
-  }
+  `;  
 
 }
 
+} finally {
+
+hideSplash();
+
+}
+
+}
 
 /* =========================
-   DOM READY
+DOM READY
 ========================= */
 
 if (
-  document.readyState ===
-  "loading"
+document.readyState ===
+"loading"
 ) {
 
-  document.addEventListener(
-    "DOMContentLoaded",
-    startApp
-  );
+document.addEventListener(
+"DOMContentLoaded",
+startApp
+);
 
 } else {
 
-  startApp();
+startApp();
 
 }
