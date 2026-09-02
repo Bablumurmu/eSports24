@@ -3169,35 +3169,152 @@ function route() {
 
 
 /* =========================
-   START APP
+   START APP - SAFE BOOT
 ========================= */
 
-window.addEventListener(
-  "hashchange",
-  route
-);
+let appStarted = false;
 
+function hideSplash() {
+  const splash = $("splash");
 
-loadPublicSettings();
+  if (splash) {
+    splash.hidden = true;
+    splash.style.display = "none";
+  }
+}
 
+function showBootError(error) {
+  console.error("❌ APP BOOT ERROR:", error);
 
-loadTournaments();
+  const appEl = $("app");
 
+  if (!appEl) return;
 
-route();
+  appEl.innerHTML = `
+    <section>
+      <h1>eSports24</h1>
+
+      <div class="card">
+        <h3>Website loading error</h3>
+
+        <p class="muted">
+          Tournament data load nahi ho pa raha hai.
+        </p>
+
+        <p class="muted">
+          ${esc(
+            error?.message ||
+            "Please refresh the page and try again."
+          )}
+        </p>
+
+        <button
+          class="btn primary"
+          id="retryApp"
+        >
+          Retry
+        </button>
+      </div>
+    </section>
+  `;
+
+  const retry = $("retryApp");
+
+  if (retry) {
+    retry.onclick = () => {
+      location.reload();
+    };
+  }
+}
+
+async function startApp() {
+  if (appStarted) return;
+
+  appStarted = true;
+
+  try {
+    console.log("🚀 eSports24 starting...");
+
+    /*
+     * Hide splash after maximum 1.5 seconds.
+     * Firebase failure should never keep the
+     * website stuck on loading screen.
+     */
+    setTimeout(() => {
+      hideSplash();
+    }, 1500);
+
+    /*
+     * Hash routing
+     */
+    window.addEventListener(
+      "hashchange",
+      () => {
+        try {
+          route();
+        } catch (error) {
+          showBootError(error);
+        }
+      }
+    );
+
+    /*
+     * Public settings
+     * This is optional. Even if it fails,
+     * website should continue loading.
+     */
+    try {
+      await loadPublicSettings();
+    } catch (error) {
+      console.warn(
+        "Public settings skipped:",
+        error
+      );
+    }
+
+    /*
+     * Tournament listener
+     *
+     * Do NOT await this because onSnapshot()
+     * is a realtime listener.
+     */
+    try {
+      loadTournaments();
+    } catch (error) {
+      showBootError(error);
+    }
+
+    /*
+     * Initial route
+     */
+    try {
+      route();
+    } catch (error) {
+      showBootError(error);
+    }
+
+    /*
+     * Final splash safety
+     */
+    setTimeout(() => {
+      hideSplash();
+    }, 2500);
+
+    console.log("✅ eSports24 started.");
+
+  } catch (error) {
+    showBootError(error);
+
+    /*
+     * Never leave user stuck on splash.
+     */
+    hideSplash();
+  }
+}
 
 
 /* =========================
-   SPLASH
+   START
 ========================= */
 
-setTimeout(
-  () => {
-
-    if ($("splash")) {
-      $("splash").hidden = true;
-    }
-
-  },
-  900
-);
+startApp();
