@@ -6,64 +6,260 @@
   <title>eSports24 Admin</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
 <header class="topbar">
   <a class="brand" href="index.html">eSports24 Admin</a>
   <button id="adminLogout" class="btn small">Logout</button>
 </header>
+
 <main class="container admin">
+
+  <!-- ADMIN LOGIN -->
   <section id="adminLoginCard" class="card">
     <h1>Admin Login</h1>
+
     <form id="adminLoginForm">
-      <input id="adminEmail" type="email" placeholder="Admin email" required>
-      <input id="adminPassword" type="password" placeholder="Password" required>
+      <input
+        id="adminEmail"
+        type="email"
+        placeholder="Admin email"
+        required
+      >
+
+      <input
+        id="adminPassword"
+        type="password"
+        placeholder="Password"
+        required
+      >
+
       <button class="btn primary">Login</button>
     </form>
   </section>
 
+
+  <!-- ADMIN DASHBOARD -->
   <section id="dashboard" hidden>
+
     <div class="grid2">
-      <section class="card"><h2>Brand & Payment</h2>
+
+      <!-- BRAND & PAYMENT -->
+      <section class="card">
+
+        <h2>Brand & Payment</h2>
+
         <form id="settingsForm">
-          <input id="logoUrl" placeholder="Logo image URL">
-          <input id="splashUrl" placeholder="Splash image URL">
-          <input id="qrUrl" placeholder="Payment QR image URL">
-          <button class="btn primary">Save settings</button>
+
+          <input
+            id="logoUrl"
+            placeholder="Logo image URL"
+          >
+
+          <input
+            id="splashUrl"
+            placeholder="Splash image URL"
+          >
+
+          <input
+            id="qrUrl"
+            placeholder="Payment QR image URL"
+          >
+
+          <button class="btn primary">
+            Save settings
+          </button>
+
         </form>
-        <p class="muted">No Firebase Storage is used. Enter direct HTTPS image URLs; they are stored in Firestore at adminSettings/public.</p>
+
+        <p class="muted">
+          No Firebase Storage is used. Enter direct HTTPS image URLs;
+          they are stored in Firestore at adminSettings/public.
+        </p>
+
       </section>
 
-      <section class="card"><h2>Create Tournament</h2>
+
+      <!-- CREATE TOURNAMENT -->
+      <section class="card">
+
+        <h2>Create Tournament</h2>
+
         <form id="tournamentForm">
-          <input id="tName" placeholder="Tournament name" required>
-          <input id="tImage" placeholder="Tournament image URL" required>
-          <select id="tMode"><option>Solo</option><option>Duo</option><option>Squad</option></select>
-          <select id="tFree"><option value="false">Paid</option><option value="true">Free</option></select>
-          <input id="tFee" type="number" min="0" step="1" placeholder="Entry fee">
-          <input id="tSlots" type="number" min="1" placeholder="Total slots" required>
-          <input id="tKill" type="number" min="0" step="0.01" placeholder="Per kill">
-          <label>Registration ends <input id="tReg" type="datetime-local" required></label>
-          <label>Match date/time <input id="tDate" type="datetime-local" required></label>
-          <textarea id="tPrizes" rows="6" placeholder='Prize JSON, e.g. {"1st":500,"2nd":300,"3rd":200}'></textarea>
-          <button class="btn primary">Create tournament</button>
+
+          <input
+            id="tName"
+            placeholder="Tournament name"
+            required
+          >
+
+          <input
+            id="tImage"
+            placeholder="Tournament image URL"
+            required
+          >
+
+          <select id="tMode">
+            <option>Solo</option>
+            <option>Duo</option>
+            <option>Squad</option>
+          </select>
+
+          <select id="tFree">
+            <option value="false">Paid</option>
+            <option value="true">Free</option>
+          </select>
+
+
+          <!-- ENTRY FEE -->
+          <div class="form-box">
+            <label for="tFee">
+              Entry Fee
+            </label>
+
+            <input
+              id="tFee"
+              type="number"
+              min="0"
+              step="1"
+              value="0"
+              placeholder="₹ Entry Fee"
+            >
+          </div>
+
+
+          <!-- PER KILL -->
+          <div class="form-box">
+            <label for="tKill">
+              Per Kill
+            </label>
+
+            <input
+              id="tKill"
+              type="number"
+              min="0"
+              step="0.01"
+              value="0"
+              placeholder="₹ Per Kill"
+            >
+          </div>
+
+
+          <!-- TOTAL SLOTS -->
+          <input
+            id="tSlots"
+            type="number"
+            min="1"
+            placeholder="Total slots"
+            required
+          >
+
+
+          <!-- REGISTRATION END -->
+          <label>
+            Registration ends
+            <input
+              id="tReg"
+              type="datetime-local"
+              required
+            >
+          </label>
+
+
+          <!-- MATCH DATE -->
+          <label>
+            Match date/time
+            <input
+              id="tDate"
+              type="datetime-local"
+              required
+            >
+          </label>
+
+
+          <!-- PRIZES -->
+          <textarea
+            id="tPrizes"
+            rows="6"
+            placeholder='Prize JSON, e.g. {"1st":500,"2nd":300,"3rd":200}'
+          ></textarea>
+
+
+          <button class="btn primary">
+            Create tournament
+          </button>
+
         </form>
+
       </section>
+
     </div>
 
-    <section class="card"><h2>Deposit Requests</h2><div id="deposits"></div></section>
-    <section class="card"><h2>Tournaments</h2><div id="adminTournaments"></div></section>
-    <section class="card"><h2>Room ID / Password</h2>
-      <form id="roomForm">
-        <input id="roomTournamentId" placeholder="Tournament ID" required>
-        <input id="roomId" placeholder="Room ID" required>
-        <input id="roomPassword" placeholder="Room password" required>
-        <button class="btn primary">Update room</button>
-      </form>
+
+    <!-- DEPOSIT REQUESTS -->
+    <section class="card">
+      <h2>Deposit Requests</h2>
+      <div id="deposits"></div>
     </section>
-    <section class="card"><h2>Joined Players</h2><div id="players"></div></section>
+
+
+    <!-- TOURNAMENTS -->
+    <section class="card">
+      <h2>Tournaments</h2>
+      <div id="adminTournaments"></div>
+    </section>
+
+
+    <!-- ROOM -->
+    <section class="card">
+
+      <h2>Room ID / Password</h2>
+
+      <form id="roomForm">
+
+        <input
+          id="roomTournamentId"
+          placeholder="Tournament ID"
+          required
+        >
+
+        <input
+          id="roomId"
+          placeholder="Room ID"
+          required
+        >
+
+        <input
+          id="roomPassword"
+          placeholder="Room password"
+          required
+        >
+
+        <button class="btn primary">
+          Update room
+        </button>
+
+      </form>
+
+    </section>
+
+
+    <!-- PLAYERS -->
+    <section class="card">
+      <h2>Joined Players</h2>
+      <div id="players"></div>
+    </section>
+
   </section>
+
 </main>
+
+
 <div id="toast" class="toast"></div>
+
+
 <script type="module" src="admin.js"></script>
+
 </body>
 </html>
