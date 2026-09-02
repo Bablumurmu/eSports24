@@ -17,6 +17,7 @@ import {
   onSnapshot,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   addDoc,
   serverTimestamp,
@@ -276,6 +277,8 @@ async function loadAdmin() {
   setupTournamentForm();
 
   setupRoomForm();
+
+  setupManualAddMoney();
 
   loadTournaments();
 
@@ -1497,10 +1500,13 @@ async function approveDeposit(
         {
           status:
             "approved",
+
           approvedAt:
             serverTimestamp(),
+
           approvedBy:
             adminUid,
+
           updatedAt:
             serverTimestamp()
         }
@@ -1634,6 +1640,412 @@ async function rejectDeposit(
     }
   );
 }
+
+/* =========================================================
+   MANUAL ADD MONEY
+   GOOGLE FORM PAYMENT FLOW
+========================================================= */
+
+function setupManualAddMoney() {
+
+  const form =
+    $("manualAddMoneyForm");
+
+  if (!form) {
+    console.warn(
+      "Manual Add Money form not found in admin.html"
+    );
+    return;
+  }
+
+  /* Avoid duplicate event listener */
+
+  if (
+    form.dataset
+      .manualAddMoneyReady ===
+    "true"
+  ) {
+    return;
+  }
+
+  form.dataset
+    .manualAddMoneyReady =
+    "true";
+
+  form.addEventListener(
+    "submit",
+    async event => {
+
+      event.preventDefault();
+
+      const button =
+        form.querySelector(
+          'button[type="submit"]'
+        );
+
+      const emailInput =
+        $("manualAddMoneyEmail");
+
+      const amountInput =
+        $("manualAddMoneyAmount");
+
+      const email =
+        emailInput
+          ?.value
+          ?.trim()
+          ?.toLowerCase() || "";
+
+      const amount =
+        Number(
+          amountInput
+            ?.value || 0
+        );
+
+      try {
+
+        /* ---------- ADMIN CHECK ---------- */
+
+        if (!auth.currentUser) {
+          throw new Error(
+            "Admin session expired."
+          );
+        }
+
+        const adminUid =
+          auth.currentUser.uid;
+
+        if (
+          !(await isAdmin(
+            adminUid
+          ))
+        ) {
+          throw new Error(
+            "Admin verification failed."
+          );
+        }
+
+
+        /* ---------- VALIDATION ---------- */
+
+        if (!email) {
+          throw new Error(
+            "Player email is required."
+          );
+        }
+
+        if (
+          !email.includes("@") ||
+          !email.includes(".")
+        ) {
+          throw new Error(
+            "Enter a valid player email."
+          );
+        }
+
+        if (
+          !Number.isFinite(amount) ||
+          amount <= 0
+        ) {
+          throw new Error(
+            "Enter a valid amount."
+          );
+        }
+
+        if (amount > 50000) {
+          throw new Error(
+            "Maximum manual Add Money amount is ₹50,000."
+          );
+        }
+
+
+        /* ---------- BUTTON ---------- */
+
+        if (button) {
+          button.disabled =
+            true;
+
+          button.textContent =
+            "Searching...";
+        }
+
+
+        /* ---------- FIND PLAYER ---------- */
+
+        const playersSnapshot =
+          await getDocs(
+            collection(
+              db,
+              "users"
+            )
+          );
+
+        let playerId =
+          null;
+
+        let playerData =
+          null;
+
+        playersSnapshot.forEach(
+          playerDoc => {
+
+            const data =
+              playerDoc.data() ||
+              {};
+
+            const playerEmail =
+              String(
+                data.email || ""
+              )
+                .trim()
+                .toLowerCase();
+
+            if (
+              playerEmail ===
+                email &&
+              data.role !==
+                "admin"
+            ) {
+
+              playerId =
+                playerDoc.id;
+
+              playerData =
+                data;
+
+            }
+          }
+        );
+
+
+        if (
+          !playerId ||
+          !playerData
+        ) {
+          throw new Error(
+            "No player account found with this email."
+          );
+        }
+
+
+        /* ---------- BALANCE ---------- */
+
+        const playerName =
+          playerData.name ||
+          "Player";
+
+        const oldBalance =
+          Number(
+            playerData.walletBalance ||
+            0
+          );
+
+        if (
+          !Number.isFinite(
+            oldBalance
+          ) ||
+          oldBalance < 0
+        ) {
+          throw new Error(
+            "Player wallet balance is invalid."
+          );
+        }
+
+        const newBalance =
+          oldBalance + amount;
+
+
+        /* ---------- CONFIRM ---------- */
+
+        const confirmed =
+          confirm(
+            `Add ₹${amount.toFixed(2)} to ${playerName}?\n\n` +
+            `Email: ${email}\n` +
+            `Current Balance: ₹${oldBalance.toFixed(2)}\n` +
+            `New Balance: ₹${newBalance.toFixed(2)}`
+          );
+
+        if (!confirmed) {
+          return;
+        }
+
+
+        if (button) {
+          button.textContent =
+            "Adding...";
+        }
+
+
+        /* ---------- FIRESTORE TRANSACTION ---------- */
+
+        const userRef =
+          doc(
+            db,
+            "users",
+            playerId
+          );
+
+        const walletRef =
+          doc(
+            collection(
+              db,
+              "walletTransactions"
+            )
+          );
+
+
+        await runTransaction(
+          db,
+          async transaction => {
+
+            const userSnap =
+              await transaction.get(
+                userRef
+              );
+
+            if (
+              !userSnap.exists()
+            ) {
+              throw new Error(
+                "Player account no longer exists."
+              );
+            }
+
+            const currentData =
+              userSnap.data() ||
+              {};
+
+            const currentBalance =
+              Number(
+                currentData.walletBalance ||
+                0
+              );
+
+            if (
+              !Number.isFinite(
+                currentBalance
+              ) ||
+              currentBalance < 0
+            ) {
+              throw new Error(
+                "Invalid current wallet balance."
+              );
+            }
+
+            const finalBalance =
+              currentBalance +
+              amount;
+
+
+            /* Wallet update */
+
+            transaction.update(
+              userRef,
+              {
+                walletBalance:
+                  finalBalance
+              }
+            );
+
+
+            /* Wallet transaction record */
+
+            transaction.set(
+              walletRef,
+              {
+
+                uid:
+                  playerId,
+
+                type:
+                  "deposit",
+
+                amount:
+                  amount,
+
+                balanceBefore:
+                  currentBalance,
+
+                balanceAfter:
+                  finalBalance,
+
+                status:
+                  "approved",
+
+                source:
+                  "manual_admin",
+
+                method:
+                  "google_form",
+
+                playerEmail:
+                  email,
+
+                description:
+                  "Manual Add Money after Google Form payment verification",
+
+                createdAt:
+                  serverTimestamp(),
+
+                createdBy:
+                  adminUid
+
+              }
+            );
+
+          }
+        );
+
+
+        /* ---------- SUCCESS ---------- */
+
+        toast(
+          `₹${amount.toFixed(2)} added successfully to ${email}.`
+        );
+
+
+        /* ---------- RESET ---------- */
+
+        if (emailInput) {
+          emailInput.value =
+            "";
+        }
+
+        if (amountInput) {
+          amountInput.value =
+            "";
+        }
+
+
+      } catch (error) {
+
+        console.error(
+          "Manual Add Money error:",
+          error
+        );
+
+        toast(
+          error.message ||
+          "Unable to add money."
+        );
+
+      } finally {
+
+        if (button) {
+
+          button.disabled =
+            false;
+
+          button.textContent =
+            "Add Money";
+
+        }
+
+      }
+
+    }
+  );
+}
+
 
 /* =========================================================
    ROOM CREDENTIALS
