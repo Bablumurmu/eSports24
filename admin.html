@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>eSports24 Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">eSports24 Admin</a>
+  <button id="adminLogout" class="btn small">Logout</button>
+</header>
+<main class="container admin">
+  <section id="adminLoginCard" class="card">
+    <h1>Admin Login</h1>
+    <form id="adminLoginForm">
+      <input id="adminEmail" type="email" placeholder="Admin email" required>
+      <input id="adminPassword" type="password" placeholder="Password" required>
+      <button class="btn primary">Login</button>
+    </form>
+  </section>
+
+  <section id="dashboard" hidden>
+    <div class="grid2">
+      <section class="card"><h2>Brand & Payment</h2>
+        <form id="settingsForm">
+          <input id="logoUrl" placeholder="Logo image URL">
+          <input id="splashUrl" placeholder="Splash image URL">
+          <input id="qrUrl" placeholder="Legacy Payment QR image URL (not used for Instamojo)">
+          <button class="btn primary">Save settings</button>
+        </form>
+        <p class="muted">Images use direct HTTPS URLs. Wallet deposits now use Instamojo; the old QR/UTR field is kept only for compatibility and is not used by the player payment flow.</p>
+      </section>
+
+      <section class="card"><h2>Create Tournament</h2>
+        <form id="tournamentForm">
+          <input id="tName" placeholder="Tournament name" required>
+          <input id="tImage" placeholder="Tournament image URL" required>
+          <select id="tMode"><option>Solo</option><option>Duo</option><option>Squad</option></select>
+          <select id="tFree"><option value="false">Paid</option><option value="true">Free</option></select>
+          <input id="tFee" type="number" min="0" step="1" placeholder="Entry fee">
+          <input id="tSlots" type="number" min="1" placeholder="Total slots" required>
+          <input id="tKill" type="number" min="0" step="0.01" placeholder="Per kill">
+          <label>Registration ends <input id="tReg" type="datetime-local" required></label>
+          <label>Match date/time <input id="tDate" type="datetime-local" required></label>
+          <textarea id="tPrizes" rows="6" placeholder='Prizes: 1st - 100&#10;2nd - 50&#10;3rd - 25&#10;Per Kill - 5&#10;&#10;JSON also accepted: {"1st":100,"2nd":50}'></textarea>
+          <button class="btn primary">Create tournament</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="card"><h2>Deposit Requests</h2><div id="deposits"></div></section>
+    <section class="card"><h2>Tournaments</h2><div id="adminTournaments"></div></section>
+    <section class="card"><h2>Room ID / Password</h2>
+      <form id="roomForm">
+        <input id="roomTournamentId" placeholder="Tournament ID" required>
+        <input id="roomId" placeholder="Room ID" required>
+        <input id="roomPassword" placeholder="Room password" required>
+        <button class="btn primary">Update room</button>
+      </form>
+    </section>
+    <section class="card"><h2>Joined Players</h2><div id="players"></div></section>
+  </section>
+</main>
+<div id="toast" class="toast"></div>
+<script type="module" src="admin.js"></script>
+</body>
+</html>
